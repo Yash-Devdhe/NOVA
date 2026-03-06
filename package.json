@@ -1,8 +1,0 @@
-{
-  "devDependencies": {
-    "@types/react": "^19.2.13"
-  },
-  "dependencies": {
-    "i": "^0.3.7"
-  }
-}
