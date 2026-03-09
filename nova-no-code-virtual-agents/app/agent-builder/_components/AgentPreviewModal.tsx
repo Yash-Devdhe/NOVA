@@ -66,6 +66,7 @@ const AgentPreviewModal = ({
   const [draggedNode, setDraggedNode] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const messageCounterRef = useRef(0);
   
   // API Keys and usage
   const [apiKeys, setApiKeys] = useState<Record<string, string>>({});
@@ -226,6 +227,14 @@ const AgentPreviewModal = ({
     }
   };
 
+  const nextMessageId = () => {
+    messageCounterRef.current += 1;
+    if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+      return crypto.randomUUID();
+    }
+    return `${Date.now()}-${messageCounterRef.current}`;
+  };
+
   const addAssistantMessage = (message: ChatMessage) => {
     setMessages((prev) => [...prev, message]);
   };
@@ -237,7 +246,7 @@ const AgentPreviewModal = ({
     setMessages((prev) => [
       ...prev,
       {
-        id: Date.now().toString(),
+        id: nextMessageId(),
         role: "user",
         content: currentInput,
         timestamp: new Date(),
@@ -249,7 +258,7 @@ const AgentPreviewModal = ({
     try {
       if (["hi", "hello", "hey"].includes(lowerInput)) {
         addAssistantMessage({
-          id: (Date.now() + 1).toString(),
+          id: nextMessageId(),
           role: "assistant",
           content: `Hello! I'm ${agentName}. Ask for workflow help, custom API calls, or weather (if your agent includes a weather API tool).`,
           timestamp: new Date(),
@@ -261,7 +270,7 @@ const AgentPreviewModal = ({
         const city = extractCity(currentInput);
         if (!city) {
           addAssistantMessage({
-            id: (Date.now() + 1).toString(),
+            id: nextMessageId(),
             role: "assistant",
             content: "Please specify a city, for example: weather in Tokyo.",
             timestamp: new Date(),
@@ -284,7 +293,7 @@ const AgentPreviewModal = ({
           throw new Error(weatherData.error || "Could not fetch weather data.");
         }
         addAssistantMessage({
-          id: (Date.now() + 1).toString(),
+          id: nextMessageId(),
           role: "assistant",
           content: `Current weather in ${weatherData.city}, ${weatherData.country}: ${weatherData.temperature}°C, feels like ${weatherData.feelsLike}°C, ${weatherData.description}.`,
           timestamp: new Date(),
@@ -295,7 +304,7 @@ const AgentPreviewModal = ({
       }
       if (isImagePrompt(lowerInput) || isVideoPrompt(lowerInput)) {
         addAssistantMessage({
-          id: (Date.now() + 1).toString(),
+          id: nextMessageId(),
           role: "assistant",
           content:
             "Image/video generation is available in Dashboard Preview. Agent Builder Preview is focused on testing your workflow and API tools.",
@@ -332,8 +341,16 @@ const AgentPreviewModal = ({
         if (!apiRes.ok) {
           throw new Error(apiData.error || "API call failed.");
         }
+        if (
+          typeof apiData?.data?.raw === "string" &&
+          apiData.data.raw.trim().toLowerCase().startsWith("<!doctype")
+        ) {
+          throw new Error(
+            "API returned an HTML page instead of JSON. Use a direct weather endpoint like https://api.openweathermap.org/data/2.5/weather?q={{query}}&appid={{apiKey}}&units=metric"
+          );
+        }
         addAssistantMessage({
-          id: (Date.now() + 1).toString(),
+          id: nextMessageId(),
           role: "assistant",
           content: `API response (${apiData.status}):\n${formatPayload(apiData.data)}`,
           timestamp: new Date(),
@@ -358,7 +375,7 @@ const AgentPreviewModal = ({
         throw new Error(chatData.error || "Chat request failed.");
       }
       addAssistantMessage({
-        id: (Date.now() + 1).toString(),
+        id: nextMessageId(),
         role: "assistant",
         content: chatData.message || "I received your message.",
         timestamp: new Date(),
@@ -366,7 +383,7 @@ const AgentPreviewModal = ({
       });
     } catch (error) {
       addAssistantMessage({
-        id: (Date.now() + 1).toString(),
+        id: nextMessageId(),
         role: "assistant",
         content: error instanceof Error ? error.message : "I encountered an unexpected error.",
         timestamp: new Date(),
@@ -802,3 +819,4 @@ const AgentPreviewModal = ({
 };
 
 export default AgentPreviewModal;
+

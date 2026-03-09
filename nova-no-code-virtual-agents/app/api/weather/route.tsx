@@ -1,5 +1,92 @@
 import { NextResponse } from 'next/server';
 
+type WeatherPayload = {
+  provider: string;
+  city: string;
+  country: string;
+  temperature: number;
+  feelsLike: number;
+  humidity: number;
+  description: string;
+  windSpeed: number;
+  pressure: number;
+  icon?: string;
+  visibility?: number;
+  sunrise?: string;
+  sunset?: string;
+  warning?: string;
+};
+
+async function parseResponseSafely(response: Response) {
+  const contentType = response.headers.get('content-type') || '';
+  if (contentType.includes('application/json')) {
+    return response.json();
+  }
+  const raw = await response.text();
+  throw new Error(
+    `Upstream weather provider returned non-JSON content (${response.status}): ${raw.slice(0, 120)}`
+  );
+}
+
+async function fetchOpenMeteoWeather(city: string): Promise<WeatherPayload> {
+  const geoResponse = await fetch(
+    `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=1`
+  );
+  const geoData = await parseResponseSafely(geoResponse);
+
+  if (!geoData.results || geoData.results.length === 0) {
+    throw new Error('City not found');
+  }
+
+  const { latitude, longitude, name, country } = geoData.results[0];
+  const weatherResponse = await fetch(
+    `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m,pressure_surface_level`
+  );
+  const weather = await parseResponseSafely(weatherResponse);
+
+  return {
+    provider: 'Open-Meteo (Free)',
+    city: name,
+    country: country,
+    temperature: Math.round(weather.current.temperature_2m),
+    feelsLike: Math.round(weather.current.apparent_temperature),
+    humidity: weather.current.relative_humidity_2m,
+    description: getWeatherDescription(weather.current.weather_code),
+    windSpeed: weather.current.wind_speed_10m,
+    pressure: Math.round(weather.current.pressure_surface_level),
+  };
+}
+
+async function fetchOpenWeatherMapWeather(
+  city: string,
+  apiKey: string
+): Promise<WeatherPayload> {
+  const response = await fetch(
+    `https://api.openweathermap.org/data/2.5/weather?q=${encodeURIComponent(city)}&appid=${apiKey}&units=metric`
+  );
+  const data = await parseResponseSafely(response);
+
+  if (!response.ok) {
+    throw new Error(data.message || 'Failed to fetch weather data');
+  }
+
+  return {
+    provider: 'OpenWeatherMap',
+    city: data.name,
+    country: data.sys.country,
+    temperature: Math.round(data.main.temp),
+    feelsLike: Math.round(data.main.feels_like),
+    humidity: data.main.humidity,
+    description: data.weather[0].description,
+    icon: data.weather[0].icon,
+    windSpeed: data.wind.speed,
+    pressure: data.main.pressure,
+    visibility: data.visibility,
+    sunrise: new Date(data.sys.sunrise * 1000).toLocaleTimeString(),
+    sunset: new Date(data.sys.sunset * 1000).toLocaleTimeString(),
+  };
+}
+
 // Weather API - supports multiple providers
 export async function POST(req: Request) {
   try {
@@ -16,117 +103,34 @@ export async function POST(req: Request) {
     let weatherData;
 
     if (provider === 'openweathermap') {
-      // OpenWeatherMap API
-      if (!apiKey) {
-        return NextResponse.json(
-          { error: 'OpenWeatherMap API key is required' },
-          { status: 400 }
-        );
+      if (apiKey) {
+        try {
+          weatherData = await fetchOpenWeatherMapWeather(city, apiKey);
+        } catch (error) {
+          const fallback = await fetchOpenMeteoWeather(city);
+          weatherData = {
+            ...fallback,
+            warning:
+              error instanceof Error
+                ? `OpenWeatherMap failed, auto-fallback used: ${error.message}`
+                : 'OpenWeatherMap failed, auto-fallback used.',
+          };
+        }
+      } else {
+        weatherData = await fetchOpenMeteoWeather(city);
+        weatherData.warning = 'OpenWeatherMap API key missing, auto-fallback used.';
       }
-
-      const response = await fetch(
-        `https://api.openweathermap.org/data/2.5/weather?q=${encodeURIComponent(city)}&appid=${apiKey}&units=metric`
-      );
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        return NextResponse.json(
-          { error: data.message || 'Failed to fetch weather data' },
-          { status: response.status }
-        );
-      }
-
-      weatherData = {
-        provider: 'OpenWeatherMap',
-        city: data.name,
-        country: data.sys.country,
-        temperature: Math.round(data.main.temp),
-        feelsLike: Math.round(data.main.feels_like),
-        humidity: data.main.humidity,
-        description: data.weather[0].description,
-        icon: data.weather[0].icon,
-        windSpeed: data.wind.speed,
-        pressure: data.main.pressure,
-        visibility: data.visibility,
-        sunrise: new Date(data.sys.sunrise * 1000).toLocaleTimeString(),
-        sunset: new Date(data.sys.sunset * 1000).toLocaleTimeString(),
-      };
     } else if (provider === 'open-meteo') {
-      // Open-Meteo API (free, no API key needed)
-      const geoResponse = await fetch(
-        `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=1`
-      );
-
-      const geoData = await geoResponse.json();
-
-      if (!geoData.results || geoData.results.length === 0) {
-        return NextResponse.json(
-          { error: 'City not found' },
-          { status: 404 }
-        );
-      }
-
-      const { latitude, longitude, name, country } = geoData.results[0];
-
-      const weatherResponse = await fetch(
-        `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m,pressure_surface_level`
-      );
-
-      const weather = await weatherResponse.json();
-
-      weatherData = {
-        provider: 'Open-Meteo (Free)',
-        city: name,
-        country: country,
-        temperature: Math.round(weather.current.temperature_2m),
-        feelsLike: Math.round(weather.current.apparent_temperature),
-        humidity: weather.current.relative_humidity_2m,
-        description: getWeatherDescription(weather.current.weather_code),
-        windSpeed: weather.current.wind_speed_10m,
-        pressure: Math.round(weather.current.pressure_surface_level),
-      };
+      weatherData = await fetchOpenMeteoWeather(city);
     } else {
-      // Default to Open-Meteo (free)
-      const geoResponse = await fetch(
-        `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=1`
-      );
-
-      const geoData = await geoResponse.json();
-
-      if (!geoData.results || geoData.results.length === 0) {
-        return NextResponse.json(
-          { error: 'City not found' },
-          { status: 404 }
-        );
-      }
-
-      const { latitude, longitude, name, country } = geoData.results[0];
-
-      const weatherResponse = await fetch(
-        `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m,pressure_surface_level`
-      );
-
-      const weather = await weatherResponse.json();
-
-      weatherData = {
-        provider: 'Open-Meteo (Free)',
-        city: name,
-        country: country,
-        temperature: Math.round(weather.current.temperature_2m),
-        feelsLike: Math.round(weather.current.apparent_temperature),
-        humidity: weather.current.relative_humidity_2m,
-        description: getWeatherDescription(weather.current.weather_code),
-        windSpeed: weather.current.wind_speed_10m,
-        pressure: Math.round(weather.current.pressure_surface_level),
-      };
+      weatherData = await fetchOpenMeteoWeather(city);
     }
 
     return NextResponse.json(weatherData);
   } catch (error) {
     console.error('Weather API error:', error);
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: error instanceof Error ? error.message : 'Internal server error' },
       { status: 500 }
     );
   }
