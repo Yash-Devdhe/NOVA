@@ -43,17 +43,27 @@ async function fetchOpenMeteoWeather(city: string): Promise<WeatherPayload> {
     `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m,pressure_surface_level`
   );
   const weather = await parseResponseSafely(weatherResponse);
+  const current = weather?.current;
+
+  if (
+    !current ||
+    typeof current.temperature_2m !== 'number' ||
+    typeof current.apparent_temperature !== 'number' ||
+    typeof current.relative_humidity_2m !== 'number'
+  ) {
+    throw new Error('Open-Meteo response missing current weather fields');
+  }
 
   return {
     provider: 'Open-Meteo (Free)',
     city: name,
     country: country,
-    temperature: Math.round(weather.current.temperature_2m),
-    feelsLike: Math.round(weather.current.apparent_temperature),
-    humidity: weather.current.relative_humidity_2m,
-    description: getWeatherDescription(weather.current.weather_code),
-    windSpeed: weather.current.wind_speed_10m,
-    pressure: Math.round(weather.current.pressure_surface_level),
+    temperature: Math.round(current.temperature_2m),
+    feelsLike: Math.round(current.apparent_temperature),
+    humidity: current.relative_humidity_2m,
+    description: getWeatherDescription(current.weather_code),
+    windSpeed: current.wind_speed_10m,
+    pressure: Math.round(current.pressure_surface_level),
   };
 }
 

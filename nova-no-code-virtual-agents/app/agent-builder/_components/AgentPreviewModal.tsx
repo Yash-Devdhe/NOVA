@@ -239,6 +239,17 @@ const AgentPreviewModal = ({
     setMessages((prev) => [...prev, message]);
   };
 
+  const parseJsonResponse = async (response: Response) => {
+    const raw = await response.text();
+    try {
+      return JSON.parse(raw);
+    } catch {
+      throw new Error(
+        `Server returned non-JSON response (status ${response.status}): ${raw.slice(0, 120)}`
+      );
+    }
+  };
+
   const handleSendMessage = async () => {
     if (!input.trim() || loading || generatingMedia) return;
     const currentInput = input.trim();
@@ -288,14 +299,14 @@ const AgentPreviewModal = ({
             apiKey: apiKeys.openweathermap || undefined,
           }),
         });
-        const weatherData = await weatherRes.json();
+        const weatherData = await parseJsonResponse(weatherRes);
         if (!weatherRes.ok) {
           throw new Error(weatherData.error || "Could not fetch weather data.");
         }
         addAssistantMessage({
           id: nextMessageId(),
           role: "assistant",
-          content: `Current weather in ${weatherData.city}, ${weatherData.country}: ${weatherData.temperature}°C, feels like ${weatherData.feelsLike}°C, ${weatherData.description}.`,
+          content: `Current weather in ${weatherData.city}, ${weatherData.country}: ${weatherData.temperature} C, feels like ${weatherData.feelsLike} C, ${weatherData.description}.`,
           timestamp: new Date(),
           type: "weather",
           metadata: weatherData,
@@ -337,7 +348,7 @@ const AgentPreviewModal = ({
               undefined,
           }),
         });
-        const apiData = await apiRes.json();
+        const apiData = await parseJsonResponse(apiRes);
         if (!apiRes.ok) {
           throw new Error(apiData.error || "API call failed.");
         }
@@ -370,7 +381,7 @@ const AgentPreviewModal = ({
             "You are an agent workflow tester. Focus on validating node logic, input/output quality, and production-ready agent behavior.",
         }),
       });
-      const chatData = await chatRes.json();
+      const chatData = await parseJsonResponse(chatRes);
       if (!chatRes.ok) {
         throw new Error(chatData.error || "Chat request failed.");
       }
