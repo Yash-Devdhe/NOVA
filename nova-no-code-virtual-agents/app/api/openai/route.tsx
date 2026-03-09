@@ -2,10 +2,26 @@ import { NextResponse } from 'next/server';
 
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 
+function createLocalFallbackReply(prompt: string, systemPrompt?: string) {
+  const normalized = prompt.toLowerCase();
+  const hasBuildIntent =
+    normalized.includes('agent') ||
+    normalized.includes('workflow') ||
+    normalized.includes('tool') ||
+    normalized.includes('api');
+
+  if (hasBuildIntent) {
+    return `I can help you design this agent right away.\n\n1. Define the user goal in one sentence.\n2. Add required tools (LLM/API/Approval) in order.\n3. Set clear success/failure conditions.\n4. Test with 3 real prompts and refine outputs.\n\n${systemPrompt ? 'Your current instructions are loaded for this preview.' : 'Add instructions in settings to make responses more specific.'}`;
+  }
+
+  return `Preview response (local mode): ${prompt}\n\nAdd an OpenAI API key to switch to live model responses.`;
+}
+
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { prompt, type } = body;
+    const { prompt, type, providerApiKey, systemPrompt } = body;
+    const apiKeyToUse = providerApiKey || OPENAI_API_KEY;
 
     if (!prompt) {
       return NextResponse.json(
@@ -14,23 +30,26 @@ export async function POST(req: Request) {
       );
     }
 
-    if (!OPENAI_API_KEY) {
-      return NextResponse.json(
-        { error: 'OpenAI API key not configured' },
-        { status: 500 }
-      );
-    }
-
     if (type === 'image') {
-      // DALL-E for image generation
+      if (!apiKeyToUse) {
+        const placeholderText = encodeURIComponent(prompt.slice(0, 80) || 'Generated Image');
+        return NextResponse.json({
+          url: `https://placehold.co/1024x1024/png?text=${placeholderText}`,
+          type: 'image',
+          provider: 'placeholder',
+          warning: 'OpenAI API key not configured, using placeholder image.',
+        });
+      }
+
+      // Real image generation via OpenAI Images API
       const response = await fetch('https://api.openai.com/v1/images/generations', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${OPENAI_API_KEY}`,
+          'Authorization': `Bearer ${apiKeyToUse}`,
         },
         body: JSON.stringify({
-          model: 'dall-e-3',
+          model: 'gpt-image-1',
           prompt: prompt,
           n: 1,
           size: '1024x1024',
@@ -46,36 +65,49 @@ export async function POST(req: Request) {
         );
       }
 
+      const imagePayload = data?.data?.[0];
+      const imageUrl =
+        imagePayload?.url ||
+        (imagePayload?.b64_json
+          ? `data:image/png;base64,${imagePayload.b64_json}`
+          : null);
+
+      if (!imageUrl) {
+        return NextResponse.json(
+          { error: 'Image generated but no output URL was returned.' },
+          { status: 500 }
+        );
+      }
+
       return NextResponse.json({
-        url: data.data[0].url,
+        url: imageUrl,
         type: 'image',
       });
-    } else if (type === 'video') {
-      // Using DALL-E 3 for generating image frames that can simulate video
-      // Note: OpenAI doesn't have a native video API yet, so we'll generate an animated image description
-      // or we can use a different approach - generate a sequence of images
-      
-      // For now, return a message about video generation
-      // In production, you could integrate with other video APIs like RunwayML, Pika, etc.
-      return NextResponse.json({
-        message: 'Video generation is not yet available via OpenAI. Please use DALL-E 3 for image generation.',
-        type: 'video',
-        suggestion: 'Try using the image generation with a detailed prompt for animation concepts.',
-      });
     } else {
+      if (!apiKeyToUse) {
+        return NextResponse.json({
+          message: createLocalFallbackReply(prompt, systemPrompt),
+          type: 'chat',
+          provider: 'local-fallback',
+          warning: 'OpenAI API key not configured, using local preview mode.',
+        });
+      }
+
       // Chat completion for general conversation
       const response = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${OPENAI_API_KEY}`,
+          'Authorization': `Bearer ${apiKeyToUse}`,
         },
         body: JSON.stringify({
-          model: 'gpt-4',
+          model: 'gpt-4o-mini',
           messages: [
             {
               role: 'system',
-              content: 'You are a helpful AI assistant for a no-code virtual agent platform. Help users understand how to build AI agents, explain tools, and assist with their workflow creation.',
+              content:
+                systemPrompt ||
+                'You are a helpful AI assistant for a no-code virtual agent platform. Help users understand how to build AI agents, explain tools, and assist with their workflow creation.',
             },
             {
               role: 'user',

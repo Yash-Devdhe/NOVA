@@ -56,6 +56,25 @@ const AgentBuilderPage = () => {
     }
   }, [agentDetails]);
 
+  useEffect(() => {
+    if (!agentId) return;
+    const savedConfig = localStorage.getItem(`agent-${agentId}`);
+    if (!savedConfig) return;
+
+    try {
+      const parsed = JSON.parse(savedConfig);
+      if (Array.isArray(parsed.nodes) && parsed.nodes.length > 0) {
+        setNodes(parsed.nodes);
+      }
+      if (typeof parsed.customCode === "string") {
+        setCustomCode(parsed.customCode);
+      }
+      setSaved(true);
+    } catch (error) {
+      console.error("Failed to load saved agent config:", error);
+    }
+  }, [agentId]);
+
   const handleSave = async () => {
     setLoading(true);
     try {

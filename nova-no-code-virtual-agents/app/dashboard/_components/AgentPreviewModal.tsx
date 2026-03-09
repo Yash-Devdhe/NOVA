@@ -17,7 +17,6 @@ import {
   ResizablePanel,
   ResizableHandle,
 } from "@/components/ui/resizable";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Send,
   Bot,
@@ -141,8 +140,11 @@ const AgentPreviewModal: React.FC<AgentPreviewModalProps> = ({
   onOpenChange,
 }) => {
   const [activeTab, setActiveTab] = useState("chat");
-  const [prompt, setPrompt] = useState("");
+  const [chatPrompt, setChatPrompt] = useState("");
+  const [generationPrompt, setGenerationPrompt] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
+  const [openAIKey, setOpenAIKey] = useState("");
+  const [replicateKey, setReplicateKey] = useState("");
   const [messages, setMessages] = useState<Message[]>([
     {
       id: "1",
@@ -156,6 +158,19 @@ const AgentPreviewModal: React.FC<AgentPreviewModalProps> = ({
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
+  useEffect(() => {
+    if (!open) return;
+    const stored = localStorage.getItem("dashboard-preview-keys");
+    if (!stored) return;
+    try {
+      const parsed = JSON.parse(stored);
+      setOpenAIKey(parsed.openAIKey || "");
+      setReplicateKey(parsed.replicateKey || "");
+    } catch {
+      // Ignore corrupted localStorage values
+    }
+  }, [open]);
+
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
@@ -164,42 +179,79 @@ const AgentPreviewModal: React.FC<AgentPreviewModalProps> = ({
     scrollToBottom();
   }, [messages]);
 
+  const persistKeys = () => {
+    localStorage.setItem(
+      "dashboard-preview-keys",
+      JSON.stringify({ openAIKey, replicateKey })
+    );
+  };
+
   const handleSendMessage = async () => {
-    if (!prompt.trim()) return;
+    const currentPrompt =
+      activeTab === "generate" ? generationPrompt.trim() : chatPrompt.trim();
+    if (!currentPrompt) return;
 
     const userMessage: Message = {
       id: Date.now().toString(),
       role: "user",
-      content: prompt,
+      content: currentPrompt,
       timestamp: new Date(),
       type: "text",
     };
 
     setMessages((prev) => [...prev, userMessage]);
-    setPrompt("");
+    if (activeTab === "generate") {
+      setGenerationPrompt("");
+    } else {
+      setChatPrompt("");
+    }
     setIsGenerating(true);
+    persistKeys();
 
     try {
-      const response = await fetch("/api/openai", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          prompt: prompt,
-          type: generationType === "chat" ? "chat" : generationType,
-        }),
-      });
+      let response: Response;
+      if (activeTab === "generate" && generationType === "video") {
+        response = await fetch("/api/video", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            prompt: currentPrompt,
+            apiKey: replicateKey || undefined,
+            userId: "dashboard-preview",
+          }),
+        });
+      } else {
+        response = await fetch("/api/openai", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            prompt: currentPrompt,
+            type: activeTab === "generate" ? generationType : "chat",
+            providerApiKey: openAIKey || undefined,
+            systemPrompt:
+              "You are NOVA dashboard preview assistant. Give practical guidance for creating professional agents and workflows.",
+          }),
+        });
+      }
 
       const data = await response.json();
 
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: "assistant",
-        content: data.message || data.url || data.error || "Something went wrong",
+        content:
+          data.message ||
+          data.videoUrl ||
+          data.url ||
+          data.error ||
+          "Something went wrong",
         timestamp: new Date(),
-        type: data.type || "text",
-        mediaUrl: data.url,
+        type:
+          data.type ||
+          (activeTab === "generate" && generationType === "video"
+            ? "video"
+            : "text"),
+        mediaUrl: data.url || data.videoUrl,
       };
 
       setMessages((prev) => [...prev, assistantMessage]);
@@ -257,7 +309,7 @@ const AgentPreviewModal: React.FC<AgentPreviewModalProps> = ({
                     Available tools for your agent
                   </p>
                 </div>
-                <ScrollArea className="h-[calc(100%-60px)] p-4">
+                <div className="h-[calc(100%-60px)] p-4 overflow-y-scroll">
                   <div className="space-y-2">
                     {tools.map((tool) => (
                       <div
@@ -308,7 +360,7 @@ const AgentPreviewModal: React.FC<AgentPreviewModalProps> = ({
                       </p>
                     </div>
                   </div>
-                </ScrollArea>
+                </div>
               </div>
             </ResizablePanel>
 
@@ -346,7 +398,7 @@ const AgentPreviewModal: React.FC<AgentPreviewModalProps> = ({
                     className="flex-1 m-0 flex flex-col overflow-hidden"
                   >
                     {/* Messages Area */}
-                    <ScrollArea className="flex-1 p-4">
+                    <div className="flex-1 p-4 overflow-y-scroll">
                       <div className="space-y-4">
                         {messages.map((message) => (
                           <div
@@ -374,6 +426,15 @@ const AgentPreviewModal: React.FC<AgentPreviewModalProps> = ({
                                   <img
                                     src={message.mediaUrl}
                                     alt="Generated"
+                                    className="rounded-lg max-w-full"
+                                  />
+                                </div>
+                              )}
+                              {message.type === "video" && message.mediaUrl && (
+                                <div className="mb-2">
+                                  <video
+                                    src={message.mediaUrl}
+                                    controls
                                     className="rounded-lg max-w-full"
                                   />
                                 </div>
@@ -429,22 +490,22 @@ const AgentPreviewModal: React.FC<AgentPreviewModalProps> = ({
                         )}
                         <div ref={messagesEndRef} />
                       </div>
-                    </ScrollArea>
+                    </div>
 
                     {/* Chat Input */}
                     <div className="p-4 border-t">
                       <div className="flex gap-2">
                         <Input
-                          value={prompt}
-                          onChange={(e) => setPrompt(e.target.value)}
-                          onKeyPress={handleKeyPress}
+                          value={chatPrompt}
+                          onChange={(e) => setChatPrompt(e.target.value)}
+                          onKeyDown={handleKeyPress}
                           placeholder="Type your message..."
                           className="flex-1"
                           disabled={isGenerating}
                         />
                         <Button
                           onClick={handleSendMessage}
-                          disabled={isGenerating || !prompt.trim()}
+                          disabled={isGenerating || !chatPrompt.trim()}
                         >
                           {isGenerating ? (
                             <Loader2 className="h-4 w-4 animate-spin" />
@@ -493,14 +554,39 @@ const AgentPreviewModal: React.FC<AgentPreviewModalProps> = ({
                           </Button>
                         </div>
 
+                        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                          <div className="space-y-1">
+                            <label className="text-xs font-medium text-gray-600">
+                              OpenAI Key (for images/chat)
+                            </label>
+                            <Input
+                              type="password"
+                              value={openAIKey}
+                              onChange={(e) => setOpenAIKey(e.target.value)}
+                              placeholder="sk-..."
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <label className="text-xs font-medium text-gray-600">
+                              Replicate Key (for videos)
+                            </label>
+                            <Input
+                              type="password"
+                              value={replicateKey}
+                              onChange={(e) => setReplicateKey(e.target.value)}
+                              placeholder="r8_..."
+                            />
+                          </div>
+                        </div>
+
                         {/* Prompt Input */}
                         <div className="space-y-2">
                           <label className="text-sm font-medium">
                             Describe your {generationType}:
                           </label>
                           <Textarea
-                            value={prompt}
-                            onChange={(e) => setPrompt(e.target.value)}
+                            value={generationPrompt}
+                            onChange={(e) => setGenerationPrompt(e.target.value)}
                             placeholder={
                               generationType === "image"
                                 ? "A beautiful sunset over mountains with vibrant orange and pink colors..."
@@ -514,7 +600,7 @@ const AgentPreviewModal: React.FC<AgentPreviewModalProps> = ({
                         {/* Generate Button */}
                         <Button
                           onClick={handleSendMessage}
-                          disabled={isGenerating || !prompt.trim()}
+                          disabled={isGenerating || !generationPrompt.trim()}
                           className="w-full gap-2"
                           size="lg"
                         >
@@ -557,9 +643,17 @@ const AgentPreviewModal: React.FC<AgentPreviewModalProps> = ({
                                       />
                                     )}
                                   {message.type === "video" && (
-                                    <div className="text-center py-8 text-gray-500">
-                                      <Video className="h-12 w-12 mx-auto mb-4" />
-                                      <p>{message.content}</p>
+                                    <div className="space-y-3">
+                                      {message.mediaUrl ? (
+                                        <video
+                                          src={message.mediaUrl}
+                                          controls
+                                          className="w-full rounded-lg"
+                                        />
+                                      ) : null}
+                                      <p className="text-sm text-gray-600">
+                                        {message.content}
+                                      </p>
                                     </div>
                                   )}
                                 </div>

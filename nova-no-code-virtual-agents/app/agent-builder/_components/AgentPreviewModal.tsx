@@ -4,16 +4,13 @@ import React, { useState, useEffect, useRef } from "react";
 import type { ToolNode } from "../[agentId]/page";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Loader2, Send, RotateCcw, X, GripVertical, MessageSquare, Workflow, Bot, ArrowRight, Play, Square, GitBranch, RefreshCw, Globe, CheckCircle, Code, Image as ImageIcon, Video, Sparkles, Cloud, MapPin, Volume2 } from "lucide-react";
+import { Loader2, Send, RotateCcw, X, GripVertical, MessageSquare, Workflow, Bot, ArrowRight, Play, Square, GitBranch, RefreshCw, Globe, CheckCircle, Code, Sparkles } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 
 interface ChatMessage {
   id: string;
@@ -131,7 +128,7 @@ const AgentPreviewModal = ({
         {
           id: "welcome",
           role: "assistant",
-          content: `Hello! I'm ${agentName}. I'm ready to help you with your tasks. You can:\n\n• 💬 Chat with me naturally\n• 🖼️ Generate images by typing "create an image of..." or "draw..."\n• 🎬 Generate videos by typing "make a video of..." or "create a video of..."\n\nHow can I assist you today?`,
+          content: `Hello! I'm ${agentName}. I'm ready to help you with your tasks. You can:\n\n- Chat with me naturally\n- Generate images by typing "create an image of..." or "draw..."\n- Generate videos by typing "make a video of..." or "create a video of..."\n\nHow can I assist you today?`,
           timestamp: new Date(),
           type: "text",
         },
@@ -150,214 +147,237 @@ const AgentPreviewModal = ({
       setTimeout(() => inputRef.current?.focus(), 100);
     }
   }, [open]);
+  const isImagePrompt = (text: string) =>
+    ["create an image", "draw", "generate an image", "make an image", "create image"].some(
+      (value) => text.includes(value)
+    );
 
-  // Greeting detection and smart responses - returns null for media generation, "USE_OPENAI" for OpenAI, or string for smart response
-  const getSmartResponse = (userInput: string): string | null => {
-    const lowerInput = userInput.toLowerCase().trim();
-    
-    // Greetings
-    if (["hi", "hello", "hey", "hii", "hiii", "hiya", "greetings"].includes(lowerInput)) {
-      const greetings = [
-        "Hello! How can I help you today?",
-        "Hi there! What would you like to work on?",
-        "Hey! I'm here to help. What do you need?",
-        "Hello! Great to see you. How can I assist you?",
-      ];
-      return greetings[Math.floor(Math.random() * greetings.length)];
-    }
-    
-    // How are you
-    if (lowerInput.includes("how are you")) {
-      return "I'm doing great, thank you for asking! I'm ready to help you with any tasks you have. Whether it's answering questions, generating images, or creating videos, I'm here for you!";
-    }
-    
-    // What's your name
-    if (lowerInput.includes("what's your name") || lowerInput.includes("what is your name") || lowerInput.includes("who are you")) {
-      return `I'm ${agentName}, your AI assistant. I'm here to help you with conversations, image generation, video creation, and any questions you might have!`;
-    }
-    
-    // Thank you
-    if (["thank you", "thanks", "thx", "appreciate"].some(word => lowerInput.includes(word))) {
-      const thanks = [
-        "You're welcome! Happy to help!",
-        "No problem at all! Let me know if you need anything else.",
-        "Glad I could help! Feel free to ask more questions.",
-      ];
-      return thanks[Math.floor(Math.random() * thanks.length)];
-    }
-    
-    // Help request
-    if (lowerInput.includes("help") || lowerInput.includes("what can you do")) {
-      return `I'm ${agentName} and I can help you with:\n\n💬 **Conversations** - Just chat with me naturally!\n🖼️ **Image Generation** - Say things like "create an image of a sunset" or "draw a cat"\n🎬 **Video Generation** - Say things like "make a video of a flying bird"\n\nJust let me know what you need!`;
-    }
-    
-    // Goodbye
-    if (["bye", "goodbye", "see you", "talk later"].some(word => lowerInput.includes(word))) {
-      return "Goodbye! It was great talking with you. Feel free to come back anytime you need help!";
-    }
-    
-    // Image generation triggers
-    if (lowerInput.includes("create an image") || lowerInput.includes("draw") || lowerInput.includes("generate an image") || lowerInput.includes("make an image") || lowerInput.includes("create image")) {
-      return null; // Will trigger image generation
-    }
-    
-    // Video generation triggers
-    if (lowerInput.includes("create a video") || lowerInput.includes("make a video") || lowerInput.includes("generate a video") || lowerInput.includes("video of")) {
-      return null; // Will trigger video generation
-    }
-    
-    // Default - will use OpenAI
-    return "USE_OPENAI";
+  const isVideoPrompt = (text: string) =>
+    ["create a video", "make a video", "generate a video", "video of"].some((value) =>
+      text.includes(value)
+    );
+
+  const isWeatherPrompt = (text: string) =>
+    text.includes("weather") || text.includes("temperature") || text.includes("forecast");
+
+  const extractCity = (text: string) => {
+    const regex =
+      /(?:in|of|for)\s+([a-zA-Z\s.-]+?)(?:\?|$| today| now| tomorrow| please| with)/i;
+    const match = text.match(regex);
+    return (match?.[1] || "").trim();
   };
 
-  // Handle sending messages
+  const canHandleWeather = () =>
+    nodes.some((node) => {
+      if (node.type !== "api") return false;
+      const apiUrl = String(node.config?.apiUrl || "").toLowerCase();
+      const name = String(node.config?.name || "").toLowerCase();
+      return (
+        apiUrl.includes("weather") ||
+        apiUrl.includes("openweathermap") ||
+        apiUrl.includes("open-meteo") ||
+        name.includes("weather")
+      );
+    });
+
+  const getApiNode = (inputText: string) => {
+    const normalized = inputText.toLowerCase();
+    const apiNodes = nodes.filter(
+      (node) => node.type === "api" && Boolean(node.config?.apiUrl?.trim())
+    );
+
+    if (apiNodes.length === 0) return undefined;
+
+    const matchedNode = apiNodes.find((node) => {
+      const name = String(node.config?.name || "").toLowerCase();
+      const url = String(node.config?.apiUrl || "").toLowerCase();
+      return (
+        normalized.includes(name) ||
+        name.split(" ").some((token) => token.length > 2 && normalized.includes(token)) ||
+        normalized.split(" ").some((token) => token.length > 3 && url.includes(token))
+      );
+    });
+
+    return matchedNode || apiNodes[0];
+  };
+
+  const formatPayload = (payload: unknown) => {
+    if (typeof payload === "string") return payload;
+    try {
+      return JSON.stringify(payload, null, 2);
+    } catch {
+      return "Unable to format response";
+    }
+  };
+
+  const buildApiUrl = (templateUrl: string, userInput: string) =>
+    templateUrl
+      .replaceAll("{{input}}", encodeURIComponent(userInput))
+      .replaceAll("{{query}}", encodeURIComponent(userInput));
+
+  const parseJsonIfNeeded = (value: unknown) => {
+    if (typeof value !== "string") return value;
+    const trimmed = value.trim();
+    if (!trimmed) return undefined;
+    try {
+      return JSON.parse(trimmed);
+    } catch {
+      return value;
+    }
+  };
+
+  const addAssistantMessage = (message: ChatMessage) => {
+    setMessages((prev) => [...prev, message]);
+  };
+
   const handleSendMessage = async () => {
     if (!input.trim() || loading || generatingMedia) return;
-
-    const userMessage: ChatMessage = {
-      id: Date.now().toString(),
-      role: "user",
-      content: input.trim(),
-      timestamp: new Date(),
-      type: "text",
-    };
-
-    setMessages((prev) => [...prev, userMessage]);
     const currentInput = input.trim();
+    const lowerInput = currentInput.toLowerCase();
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: Date.now().toString(),
+        role: "user",
+        content: currentInput,
+        timestamp: new Date(),
+        type: "text",
+      },
+    ]);
     setInput("");
     setLoading(true);
-
     try {
-      // Check for smart responses first
-      const smartResponse = getSmartResponse(currentInput);
-      
-      if (smartResponse === "USE_OPENAI") {
-        // Use OpenAI for regular conversation
-        const response = await fetch("/api/openai", {
+      if (["hi", "hello", "hey"].includes(lowerInput)) {
+        addAssistantMessage({
+          id: (Date.now() + 1).toString(),
+          role: "assistant",
+          content: `Hello! I'm ${agentName}. Ask for workflow help, custom API calls, or weather (if your agent includes a weather API tool).`,
+          timestamp: new Date(),
+          type: "text",
+        });
+        return;
+      }
+      if (isWeatherPrompt(lowerInput) && canHandleWeather()) {
+        const city = extractCity(currentInput);
+        if (!city) {
+          addAssistantMessage({
+            id: (Date.now() + 1).toString(),
+            role: "assistant",
+            content: "Please specify a city, for example: weather in Tokyo.",
+            timestamp: new Date(),
+            type: "text",
+          });
+          return;
+        }
+        const provider = apiKeys.openweathermap ? "openweathermap" : "open-meteo";
+        const weatherRes = await fetch("/api/weather", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            prompt: currentInput,
-            type: "chat",
+            city,
+            provider,
+            apiKey: apiKeys.openweathermap || undefined,
           }),
         });
-
-        const data = await response.json();
-
-        const assistantMessage: ChatMessage = {
-          id: (Date.now() + 1).toString(),
-          role: "assistant",
-          content: data.message || "I received your message. How can I help you further?",
-          timestamp: new Date(),
-          type: "text",
-        };
-
-        setMessages((prev) => [...prev, assistantMessage]);
-      } else if (smartResponse === null) {
-        // Check for image/video generation
-        if (currentInput.toLowerCase().includes("video") || currentInput.toLowerCase().includes("make a video") || currentInput.toLowerCase().includes("create a video")) {
-          // Video generation
-          setGeneratingMedia(true);
-          setMediaType("video");
-          
-          const videoMessage: ChatMessage = {
-            id: (Date.now() + 1).toString(),
-            role: "assistant",
-            content: "🎬 Generating your video... This may take a moment.",
-            timestamp: new Date(),
-            type: "video",
-          };
-          setMessages((prev) => [...prev, videoMessage]);
-
-          // Simulate video generation (in production, use actual API)
-          await new Promise(resolve => setTimeout(resolve, 2000));
-          
-          // Add video result
-          const videoResult: ChatMessage = {
-            id: (Date.now() + 2).toString(),
-            role: "assistant",
-            content: `🎬 Here's your generated video based on: "${currentInput}"\n\n(Note: In production, this would connect to a video generation API like RunwayML or Pika Labs)`,
-            timestamp: new Date(),
-            type: "video",
-            mediaUrl: "https://sample-videos.com/video321/mp4/720/big_buck_bunny_720p_1mb.mp4",
-          };
-          setMessages((prev) => [...prev, videoResult]);
-          setGeneratingMedia(false);
-          setMediaType(null);
-        } else {
-          // Image generation
-          setGeneratingMedia(true);
-          setMediaType("image");
-          
-          const imageMessage: ChatMessage = {
-            id: (Date.now() + 1).toString(),
-            role: "assistant",
-            content: "🖼️ Generating your image... This may take a moment.",
-            timestamp: new Date(),
-            type: "image",
-          };
-          setMessages((prev) => [...prev, imageMessage]);
-
-          // Call OpenAI for image generation
-          const response = await fetch("/api/openai", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              prompt: currentInput,
-              type: "image",
-            }),
-          });
-
-          const data = await response.json();
-
-          if (data.url) {
-            const imageResult: ChatMessage = {
-              id: (Date.now() + 2).toString(),
-              role: "assistant",
-              content: `🖼️ Here's your generated image based on: "${currentInput}"`,
-              timestamp: new Date(),
-              type: "image",
-              mediaUrl: data.url,
-            };
-            setMessages((prev) => [...prev, imageResult]);
-          } else {
-            const errorMsg: ChatMessage = {
-              id: (Date.now() + 2).toString(),
-              role: "assistant",
-              content: "Sorry, I couldn't generate that image. Please try a different prompt.",
-              timestamp: new Date(),
-              type: "text",
-            };
-            setMessages((prev) => [...prev, errorMsg]);
-          }
-          setGeneratingMedia(false);
-          setMediaType(null);
+        const weatherData = await weatherRes.json();
+        if (!weatherRes.ok) {
+          throw new Error(weatherData.error || "Could not fetch weather data.");
         }
-      } else {
-        // Use smart response
-        const assistantMessage: ChatMessage = {
+        addAssistantMessage({
           id: (Date.now() + 1).toString(),
           role: "assistant",
-          content: smartResponse,
+          content: `Current weather in ${weatherData.city}, ${weatherData.country}: ${weatherData.temperature}°C, feels like ${weatherData.feelsLike}°C, ${weatherData.description}.`,
+          timestamp: new Date(),
+          type: "weather",
+          metadata: weatherData,
+        });
+        return;
+      }
+      if (isImagePrompt(lowerInput) || isVideoPrompt(lowerInput)) {
+        addAssistantMessage({
+          id: (Date.now() + 1).toString(),
+          role: "assistant",
+          content:
+            "Image/video generation is available in Dashboard Preview. Agent Builder Preview is focused on testing your workflow and API tools.",
           timestamp: new Date(),
           type: "text",
-        };
-        setMessages((prev) => [...prev, assistantMessage]);
+        });
+        return;
       }
-    } catch (error) {
-      const errorMessage: ChatMessage = {
+      const apiNode = getApiNode(currentInput);
+      if (apiNode) {
+        const mergedApiKey =
+          apiNode.config.apiKey ||
+          apiKeys.custom ||
+          apiKeys.openweathermap ||
+          "";
+        const resolvedUrl = buildApiUrl(
+          String(apiNode.config.apiUrl || ""),
+          currentInput
+        ).replaceAll("{{apiKey}}", encodeURIComponent(mergedApiKey));
+        const apiRes = await fetch("/api/custom-api", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            url: resolvedUrl,
+            method: apiNode.config.method || "GET",
+            apiKey: mergedApiKey,
+            headers: parseJsonIfNeeded(apiNode.config.headers) || {},
+            body:
+              parseJsonIfNeeded(apiNode.config.bodyParams || apiNode.config.body) ||
+              undefined,
+          }),
+        });
+        const apiData = await apiRes.json();
+        if (!apiRes.ok) {
+          throw new Error(apiData.error || "API call failed.");
+        }
+        addAssistantMessage({
+          id: (Date.now() + 1).toString(),
+          role: "assistant",
+          content: `API response (${apiData.status}):\n${formatPayload(apiData.data)}`,
+          timestamp: new Date(),
+          type: "text",
+          metadata: apiData,
+        });
+        return;
+      }
+      const chatRes = await fetch("/api/openai", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          prompt: currentInput,
+          type: "chat",
+          providerApiKey: apiKeys.openai || undefined,
+          systemPrompt:
+            "You are an agent workflow tester. Focus on validating node logic, input/output quality, and production-ready agent behavior.",
+        }),
+      });
+      const chatData = await chatRes.json();
+      if (!chatRes.ok) {
+        throw new Error(chatData.error || "Chat request failed.");
+      }
+      addAssistantMessage({
         id: (Date.now() + 1).toString(),
         role: "assistant",
-        content: "I apologize, but I encountered an error processing your request. Please try again.",
+        content: chatData.message || "I received your message.",
         timestamp: new Date(),
         type: "text",
-      };
-      setMessages((prev) => [...prev, errorMessage]);
+      });
+    } catch (error) {
+      addAssistantMessage({
+        id: (Date.now() + 1).toString(),
+        role: "assistant",
+        content: error instanceof Error ? error.message : "I encountered an unexpected error.",
+        timestamp: new Date(),
+        type: "text",
+      });
     } finally {
       setLoading(false);
+      setGeneratingMedia(false);
+      setMediaType(null);
     }
   };
-
   // Handle quick actions
   const handleQuickAction = async (action: string) => {
     setInput(action);
@@ -508,7 +528,7 @@ const AgentPreviewModal = ({
             </div>
 
             {/* Messages */}
-            <ScrollArea className="flex-1 p-4">
+            <div className="flex-1 p-4 overflow-y-scroll">
               <div className="space-y-4">
                 {messages.map((message) => (
                   <div
@@ -557,7 +577,7 @@ const AgentPreviewModal = ({
                       <Loader2 className="h-5 w-5 animate-spin text-slate-500" />
                       <span className="text-sm text-slate-500">
                         {generatingMedia 
-                          ? (mediaType === "image" ? "🖼️ Generating image..." : "🎬 Generating video...")
+                          ? (mediaType === "image" ? "Generating image..." : "Generating video...")
                           : "Thinking..."
                         }
                       </span>
@@ -566,7 +586,7 @@ const AgentPreviewModal = ({
                 )}
                 <div ref={messagesEndRef} />
               </div>
-            </ScrollArea>
+            </div>
 
             {/* Quick Actions */}
             <div className="px-4 py-2 border-t bg-slate-50 flex gap-2 flex-wrap">
@@ -576,28 +596,28 @@ const AgentPreviewModal = ({
                 onClick={() => handleQuickAction("Hi")}
                 className="text-xs h-7"
               >
-                👋 Say Hi
+                Say Hi
               </Button>
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => handleQuickAction("Create an image of a sunset")}
+                onClick={() => handleQuickAction("Test API response for user query: Tokyo")}
                 className="text-xs h-7"
               >
-                🖼️ Create Image
+                Test API
               </Button>
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => handleQuickAction("Make a video of a flying bird")}
+                onClick={() => handleQuickAction("Weather in Mumbai")}
                 className="text-xs h-7"
               >
-                🎬 Create Video
+                Test Weather
               </Button>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="outline" size="sm" className="text-xs h-7">
-                    💡 Suggestions
+                    Suggestions
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent>
@@ -627,25 +647,25 @@ const AgentPreviewModal = ({
                   disabled={loading || generatingMedia}
                 />
                 <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      disabled={loading || generatingMedia}
-                      className="bg-blue-600 hover:bg-blue-700"
-                    >
-                      <Sparkles className="h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => setInput("Create an image of ")}>
-                      <ImageIcon className="h-4 w-4 mr-2" />
-                      Generate Image
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => setInput("Make a video of ")}>
-                      <Video className="h-4 w-4 mr-2" />
-                      Generate Video
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    disabled={loading || generatingMedia}
+                    className="bg-blue-600 hover:bg-blue-700"
+                  >
+                    <Sparkles className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem
+                    onClick={() => setInput("Run my configured API for this query: ")}
+                  >
+                    Run API Tool
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setInput("Validate my workflow logic")}>
+                    Validate Workflow
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
                 <Button
                   onClick={handleSendMessage}
                   disabled={loading || generatingMedia || !input.trim()}
@@ -658,7 +678,7 @@ const AgentPreviewModal = ({
           </div>
 
           {/* Right Panel - Workflow Preview */}
-          <div className="flex-1 bg-slate-50 overflow-auto">
+          <div className="flex-1 bg-slate-50 overflow-y-scroll">
             <div className="p-4 border-b bg-white">
               <h3 className="font-semibold text-slate-700 flex items-center gap-2">
                 <Workflow className="h-4 w-4" />
