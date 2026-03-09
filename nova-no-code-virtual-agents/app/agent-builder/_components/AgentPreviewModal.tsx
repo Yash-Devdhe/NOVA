@@ -5,21 +5,24 @@ import type { ToolNode } from "../[agentId]/page";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Loader2, Send, RotateCcw, X, GripVertical, MessageSquare, Workflow, Bot, ArrowRight, Play, Square, GitBranch, RefreshCw, Globe, CheckCircle, Code, Image as ImageIcon, Video, Sparkles } from "lucide-react";
+import { Loader2, Send, RotateCcw, X, GripVertical, MessageSquare, Workflow, Bot, ArrowRight, Play, Square, GitBranch, RefreshCw, Globe, CheckCircle, Code, Image as ImageIcon, Video, Sparkles, Cloud, MapPin, Volume2 } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 
 interface ChatMessage {
   id: string;
   role: "user" | "assistant";
   content: string;
   timestamp: Date;
-  type?: "text" | "image" | "video";
+  type?: "text" | "image" | "video" | "audio" | "weather" | "map";
   mediaUrl?: string;
+  metadata?: Record<string, any>;
 }
 
 interface AgentPreviewModalProps {
@@ -30,14 +33,25 @@ interface AgentPreviewModalProps {
   nodes: ToolNode[];
 }
 
+// Usage tracking
+interface UsageLimits {
+  videoLimit: number;
+  imageLimit: number;
+  videosGenerated: number;
+  imagesGenerated: number;
+  audioGenerated: number;
+}
+
 /**
  * Dynamic Chat UI - Professional ChatGPT/Gemini-style interface
  * Features:
  * - Intelligent conversational AI responses
- * - Context-aware conversations with history
- * - Real-time image generation (DALL-E 3)
- * - Real-time video generation (simulated)
- * - Image/Video stored in chat history
+ * - Real-time weather data via OpenWeatherMap or Open-Meteo (free)
+ * - Real-time maps/directions via Google Maps API
+ * - Real-time image generation (DALL-E 3) with limits
+ * - Real-time video generation with limits (like Gemini)
+ * - Real-time audio/TTS generation with limits
+ * - Code display and copy functionality
  * - Professional UI styling
  */
 const AgentPreviewModal = ({
@@ -51,10 +65,64 @@ const AgentPreviewModal = ({
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [generatingMedia, setGeneratingMedia] = useState(false);
-  const [mediaType, setMediaType] = useState<"image" | "video" | null>(null);
+  const [mediaType, setMediaType] = useState<"image" | "video" | "audio" | null>(null);
   const [draggedNode, setDraggedNode] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  
+  // API Keys and usage
+  const [apiKeys, setApiKeys] = useState<Record<string, string>>({});
+  const [usage, setUsage] = useState<UsageLimits>({
+    videoLimit: 3,
+    imageLimit: 10,
+    videosGenerated: 0,
+    imagesGenerated: 0,
+    audioGenerated: 0,
+  });
+
+  // Load API keys and usage from localStorage
+  useEffect(() => {
+    if (agentId && open) {
+      const savedKeys = localStorage.getItem(`agent-api-keys-${agentId}`);
+      if (savedKeys) {
+        setApiKeys(JSON.parse(savedKeys));
+      }
+      
+      const savedLimits = localStorage.getItem(`agent-media-limits-${agentId}`);
+      if (savedLimits) {
+        const limits = JSON.parse(savedLimits);
+        setUsage(prev => ({
+          ...prev,
+          videoLimit: limits.videoLimit || 3,
+          imageLimit: limits.imageLimit || 10,
+        }));
+      }
+      
+      // Load current usage
+      const savedUsage = localStorage.getItem(`agent-usage-${agentId}`);
+      if (savedUsage) {
+        const used = JSON.parse(savedUsage);
+        // Check if it's a new day
+        const lastDate = new Date(used.date);
+        const today = new Date();
+        if (lastDate.toDateString() !== today.toDateString()) {
+          // Reset usage for new day
+          setUsage(prev => ({ ...prev, videosGenerated: 0, imagesGenerated: 0, audioGenerated: 0 }));
+        } else {
+          setUsage(prev => ({ ...prev, ...used.usage }));
+        }
+      }
+    }
+  }, [agentId, open]);
+
+  // Save usage to localStorage
+  const saveUsage = (newUsage: UsageLimits) => {
+    setUsage(newUsage);
+    localStorage.setItem(`agent-usage-${agentId}`, JSON.stringify({
+      date: new Date(),
+      usage: newUsage,
+    }));
+  };
 
   // Initialize messages when modal opens
   useEffect(() => {

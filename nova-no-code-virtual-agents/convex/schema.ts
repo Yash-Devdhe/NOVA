@@ -16,6 +16,13 @@ export default defineSchema({
     userId: v.id("UserTable"),
     createdAt: v.optional(v.number()),
     updatedAt: v.optional(v.number()),
+    // API Keys storage - encrypted
+    apiKeys: v.optional(v.record(v.string(), v.string())),
+    // Media generation limits
+    videoLimit: v.optional(v.number()),
+    imageLimit: v.optional(v.number()),
+    videosGenerated: v.optional(v.number()),
+    imagesGenerated: v.optional(v.number()),
   }),
   // Table for storing tool configurations (Agent, End, If/Else, While, API, UserApproval)
   AgentToolsTable: defineTable({

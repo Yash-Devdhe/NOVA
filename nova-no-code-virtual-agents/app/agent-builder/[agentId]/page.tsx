@@ -206,6 +206,7 @@ const AgentBuilderPage = () => {
         {/* Agent Settings Panel - Right Sidebar - Always visible */}
         <div className="w-72 bg-white border-l overflow-y-auto flex-shrink-0">
           <NodePropertiesPanel
+            agentId={agentId}
             onSave={(settings) => {
               console.log("Agent settings:", settings);
             }}
