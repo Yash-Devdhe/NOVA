@@ -163,23 +163,27 @@ const AgentPreviewModal = ({
 
   const extractCity = (text: string) => {
     const regex =
-      /(?:in|of|for)\s+([a-zA-Z\s.-]+?)(?:\?|$| today| now| tomorrow| please| with)/i;
+      /(?:in|of|for)\s+([\p{L}\p{M}\s.-]+?)(?:\?|$| today| now| tomorrow| please| with)/iu;
     const match = text.match(regex);
     return (match?.[1] || "").trim();
   };
 
-  const canHandleWeather = () =>
-    nodes.some((node) => {
+  const getWeatherApiNode = () =>
+    nodes.find((node) => {
       if (node.type !== "api") return false;
       const apiUrl = String(node.config?.apiUrl || "").toLowerCase();
       const name = String(node.config?.name || "").toLowerCase();
       return (
         apiUrl.includes("weather") ||
         apiUrl.includes("openweathermap") ||
+        apiUrl.includes("api.openweathermap.org") ||
         apiUrl.includes("open-meteo") ||
         name.includes("weather")
       );
     });
+
+  const canHandleWeather = () =>
+    Boolean(getWeatherApiNode());
 
   const getApiNode = (inputText: string) => {
     const normalized = inputText.toLowerCase();
@@ -289,14 +293,18 @@ const AgentPreviewModal = ({
           });
           return;
         }
-        const provider = apiKeys.openweathermap ? "openweathermap" : "open-meteo";
+        const weatherApiNode = getWeatherApiNode();
+        const nodeApiKey = String(weatherApiNode?.config?.apiKey || "").trim();
+        const globalApiKey = String(apiKeys.openweathermap || "").trim();
+        const effectiveApiKey = nodeApiKey || globalApiKey;
+        const provider = effectiveApiKey ? "openweathermap" : "open-meteo";
         const weatherRes = await fetch("/api/weather", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             city,
             provider,
-            apiKey: apiKeys.openweathermap || undefined,
+            apiKey: effectiveApiKey || undefined,
           }),
         });
         const weatherData = await parseJsonResponse(weatherRes);

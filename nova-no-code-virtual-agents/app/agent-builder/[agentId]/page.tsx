@@ -115,7 +115,7 @@ const AgentBuilderPage = () => {
     setSaved(false);
   };
 
-  const handleNodeSelect = (node: ToolNode) => {
+  const handleNodeSelect = (node: ToolNode | null) => {
     setSelectedNode(node);
   };
 

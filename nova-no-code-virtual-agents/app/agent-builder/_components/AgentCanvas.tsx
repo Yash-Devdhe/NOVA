@@ -23,7 +23,7 @@ import { Label } from "@/components/ui/label";
 interface AgentCanvasProps {
   nodes: ToolNode[];
   selectedNode: ToolNode | null;
-  onNodeSelect: (node: ToolNode) => void;
+  onNodeSelect: (node: ToolNode | null) => void;
   onUpdateNode: (node: ToolNode) => void;
   onDeleteNode: (nodeId: string) => void;
 }
@@ -160,6 +160,7 @@ const APIConfigPanel: React.FC<{
   const [name, setName] = useState(node.config?.name || "");
   const [apiUrl, setApiUrl] = useState(node.config?.apiUrl || "");
   const [method, setMethod] = useState(node.config?.method || "GET");
+  const [apiKey, setApiKey] = useState(node.config?.apiKey || "");
 
   const handleNameChange = (value: string) => {
     setName(value);
@@ -174,6 +175,11 @@ const APIConfigPanel: React.FC<{
   const handleMethodChange = (value: string) => {
     setMethod(value);
     onUpdateNode({ ...node, config: { ...node.config, method: value } });
+  };
+
+  const handleApiKeyChange = (value: string) => {
+    setApiKey(value);
+    onUpdateNode({ ...node, config: { ...node.config, apiKey: value } });
   };
 
   return (
@@ -222,6 +228,16 @@ const APIConfigPanel: React.FC<{
             <option value="DELETE">DELETE</option>
             <option value="PATCH">PATCH</option>
           </select>
+        </div>
+        <div>
+          <Label className="text-xs font-medium text-gray-600">API Key</Label>
+          <Input
+            type="password"
+            placeholder="Enter API key (optional)"
+            value={apiKey}
+            onChange={(e) => handleApiKeyChange(e.target.value)}
+            className="mt-1 text-sm"
+          />
         </div>
       </div>
       <div className="p-3">
@@ -434,6 +450,7 @@ const AgentCanvas: React.FC<AgentCanvasProps> = ({
 
   const handleCanvasClick = (e: React.MouseEvent) => {
     if (e.target === canvasRef.current || (e.target as HTMLElement).closest('.grid-background')) {
+      onNodeSelect(null);
     }
   };
 
@@ -530,7 +547,7 @@ const AgentCanvas: React.FC<AgentCanvasProps> = ({
               <IfElseConfigPanel
                 node={node}
                 onUpdateNode={onUpdateNode}
-                onClose={() => onNodeSelect(node)}
+                onClose={() => onNodeSelect(null)}
               />
             )}
 
@@ -538,7 +555,7 @@ const AgentCanvas: React.FC<AgentCanvasProps> = ({
               <WhileLoopConfigPanel
                 node={node}
                 onUpdateNode={onUpdateNode}
-                onClose={() => onNodeSelect(node)}
+                onClose={() => onNodeSelect(null)}
               />
             )}
 
@@ -546,7 +563,7 @@ const AgentCanvas: React.FC<AgentCanvasProps> = ({
               <APIConfigPanel
                 node={node}
                 onUpdateNode={onUpdateNode}
-                onClose={() => onNodeSelect(node)}
+                onClose={() => onNodeSelect(null)}
               />
             )}
 
@@ -554,7 +571,7 @@ const AgentCanvas: React.FC<AgentCanvasProps> = ({
               <UserApprovalConfigPanel
                 node={node}
                 onUpdateNode={onUpdateNode}
-                onClose={() => onNodeSelect(node)}
+                onClose={() => onNodeSelect(null)}
               />
             )}
 
@@ -563,7 +580,7 @@ const AgentCanvas: React.FC<AgentCanvasProps> = ({
                 node={node}
                 nodes={nodes}
                 onUpdateNode={onUpdateNode}
-                onClose={() => onNodeSelect(node)}
+                onClose={() => onNodeSelect(null)}
               />
             )}
           </div>
