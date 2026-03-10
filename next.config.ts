@@ -2,7 +2,10 @@ import path from "path";
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  outputFileTracingRoot: path.resolve(process.cwd()),
+  output: "standalone",
+  experimental: {
+    outputFileTracingRoot: path.resolve(process.cwd()),
+  },
 };
 
 export default nextConfig;
