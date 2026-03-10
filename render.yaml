@@ -3,7 +3,7 @@ services:
     name: nova-no-code-virtual-agents
     env: node
     region: oregon
-    buildCommand: npm install && npm run build
+    buildCommand: npm install && npx convex deploy && npm run build
     startCommand: npm run start
     envVars:
       - key: NODE_VERSION
@@ -13,7 +13,9 @@ services:
       - key: CLERK_SECRET_KEY
         value: ""
       - key: NEXT_PUBLIC_CONVEX_URL
-        value: ""
+        value: "https://calculating-frog-742.convex.cloud"
       - key: NEXT_TELEMETRY_DISABLED
         value: "1"
+      - key: CONVEX_DEPLOY_KEY
+        value: "prod:calculating-frog-742|eyJ2MiI6ImFjOTU5ODJmYjRiNjQ5M2Y5ZmE0MzNiOWYzOTE5ZjdiIn0="
 
