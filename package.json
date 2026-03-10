@@ -5,7 +5,10 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start"
+    "start": "next start",
+    "dev:convex": "npx convex dev",
+    "deploy:convex": "npx convex deploy",
+    "build:all": "npm run deploy:convex && npm run build"
   },
   "engines": {
     "node": "20.x"
