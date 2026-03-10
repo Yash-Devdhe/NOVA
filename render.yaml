@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: nova-no-code-virtual-agents
+    env: node
+    region: oregon
+    buildCommand: npm install && npm run build
+    startCommand: npm run start
+    envVars:
+      - key: NODE_VERSION
+        value: "20"
+      - key: NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
+        value: ""
+      - key: CLERK_SECRET_KEY
+        value: ""
+      - key: NEXT_PUBLIC_CONVEX_URL
+        value: ""
+      - key: NEXT_TELEMETRY_DISABLED
+        value: "1"
+      - key: NEXT_PUBLIC_API_URL
+        value: ""
+
