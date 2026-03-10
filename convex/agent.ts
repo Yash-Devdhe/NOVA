@@ -1,7 +1,7 @@
 import { mutation, query } from "./_generated/server"
 import { v } from "convex/values"
 
-const AGENT_CREATION_CREDIT_COST = 100
+const AGENT_CREATION_CREDIT_COST = 1
 
 export const CreateAgent = mutation({
   args: {
@@ -95,5 +95,64 @@ export const UpdateAgentConfig = mutation({
     });
     
     return agent._id;
+  },
+})
+
+// Chat History Functions
+export const SaveChatMessage = mutation({
+  args: {
+    agentId: v.string(),
+    userId: v.id("UserTable"),
+    message: v.string(),
+    sender: v.string(),
+    metadata: v.optional(v.any()),
+  },
+  handler: async (ctx, args) => {
+    const result = await ctx.db.insert('AgentChatHistoryTable', {
+      agentId: args.agentId,
+      userId: args.userId,
+      message: args.message,
+      sender: args.sender,
+      timestamp: Date.now(),
+      metadata: args.metadata,
+    });
+    return result;
+  },
+})
+
+export const GetAgentChatHistory = query({
+  args: {
+    agentId: v.string(),
+    userId: v.id("UserTable"),
+  },
+  handler: async (ctx, args) => {
+    const result = await ctx.db.query('AgentChatHistoryTable')
+      .filter(q => q.and(
+        q.eq(q.field('agentId'), args.agentId),
+        q.eq(q.field('userId'), args.userId)
+      ))
+      .order('asc')
+      .collect();
+    return result;
+  },
+})
+
+export const ClearAgentChatHistory = mutation({
+  args: {
+    agentId: v.string(),
+    userId: v.id("UserTable"),
+  },
+  handler: async (ctx, args) => {
+    const chats = await ctx.db.query('AgentChatHistoryTable')
+      .filter(q => q.and(
+        q.eq(q.field('agentId'), args.agentId),
+        q.eq(q.field('userId'), args.userId)
+      ))
+      .collect();
+    
+    for (const chat of chats) {
+      await ctx.db.delete(chat._id);
+    }
+    return { cleared: true };
   },
 })
