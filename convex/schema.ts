@@ -24,14 +24,14 @@ export default defineSchema({
     videosGenerated: v.optional(v.number()),
     imagesGenerated: v.optional(v.number()),
   }),
-  // Table for storing tool configurations (Agent, End, If/Else, While, API, UserApproval)
-  AgentToolsTable: defineTable({
+  // Agent Chat History - stores chat conversations
+  AgentChatHistoryTable: defineTable({
     agentId: v.string(),
-    toolId: v.string(),
-    toolType: v.string(), // "agent", "end", "if", "while", "api", "userApproval"
-    config: v.any(), // Tool-specific configuration
-    createdAt: v.number(),
-    updatedAt: v.number(),
+    userId: v.id("UserTable"),
+    message: v.string(),
+    sender: v.string(), // "user" or "agent"
+    timestamp: v.number(),
+    metadata: v.optional(v.any()),
   }),
   // Table for storing chat messages
   ChatHistoryTable: defineTable({
