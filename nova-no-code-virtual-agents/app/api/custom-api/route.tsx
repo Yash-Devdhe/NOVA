@@ -1,3 +1,4 @@
+
 import { NextResponse } from 'next/server';
 
 // Custom API Tool - allows users to call any external API with their own API keys
@@ -30,23 +31,24 @@ export async function POST(req: Request) {
     }
 
     // Validate URL
+    let validatedUrl: URL;
     try {
-      new URL(url);
+      validatedUrl = new URL(url);
     } catch {
       return NextResponse.json(
-        { error: 'Invalid URL format' },
+        { error: 'Invalid URL format. Please include http:// or https://' },
         { status: 400 }
       );
     }
 
     // Build headers
     const requestHeaders: Record<string, string> = {
+      'Accept': 'application/json',
       ...(headers || {}),
     };
 
     // Add API key if provided
     if (apiKey) {
-      // Try to detect the auth scheme from headers
       if (headers?.Authorization) {
         // Use existing Authorization header
       } else if (headers?.['X-API-Key']) {
@@ -60,6 +62,8 @@ export async function POST(req: Request) {
     // Set content type
     if (contentType && !requestHeaders['Content-Type']) {
       requestHeaders['Content-Type'] = contentType;
+    } else if (!requestHeaders['Content-Type'] && ['POST', 'PUT', 'PATCH'].includes(method.toUpperCase())) {
+      requestHeaders['Content-Type'] = 'application/json';
     }
 
     // Make the API request
@@ -77,7 +81,7 @@ export async function POST(req: Request) {
       }
     }
 
-    const response = await fetch(url, fetchOptions);
+    const response = await fetch(validatedUrl.toString(), fetchOptions);
 
     // Get response content type
     const responseContentType = response.headers.get('content-type') || '';
@@ -85,18 +89,33 @@ export async function POST(req: Request) {
     let responseData;
     
     if (responseContentType.includes('application/json')) {
-      responseData = await response.json();
+      try {
+        responseData = await response.json();
+      } catch {
+        responseData = { raw: await response.text(), error: 'Failed to parse JSON' };
+      }
     } else {
-      responseData = {
-        raw: await response.text(),
-      };
+      const rawText = await response.text();
+      // Check if it's an HTML error page
+      if (rawText.toLowerCase().includes('<!doctype') || rawText.toLowerCase().includes('<html')) {
+        return NextResponse.json({
+          success: false,
+          status: response.status,
+          statusText: response.statusText,
+          error: `API returned HTML instead of JSON (status ${response.status}). Check your API URL is correct.`,
+          data: { raw: rawText.slice(0, 500) },
+          url: url,
+          method: method.toUpperCase(),
+          hint: 'For weather, use: https://api.openweathermap.org/data/2.5/weather?q={{city}}&appid={{apiKey}}'
+        }, { status: 400 });
+      }
+      responseData = { raw: rawText };
     }
 
     return NextResponse.json({
       success: response.ok,
       status: response.status,
       statusText: response.statusText,
-      headers: Object.fromEntries(response.headers.entries()),
       data: responseData,
       url: url,
       method: method.toUpperCase(),

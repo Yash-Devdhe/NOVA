@@ -18,7 +18,7 @@ export const CREDIT_PLANS: CreditPlan[] = [
     id: "starter_plus",
     name: "Starter Plus",
     amountInr: 199,
-    credits: 3000,
+    credits: 8000,
     description: "Best for testing more agents with extra credits.",
   },
   {

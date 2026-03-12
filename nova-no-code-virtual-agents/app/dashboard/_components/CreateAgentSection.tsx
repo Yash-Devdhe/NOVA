@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useContext, useState } from 'react'
-import { Loader2, Plus, Eye } from 'lucide-react'
+import { Loader2, Plus, Eye, Sparkles, Wand2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -18,7 +18,7 @@ import { useMutation } from 'convex/react'
 import { api } from '@/convex/_generated/api'
 import { useRouter } from 'next/navigation'
 import { v4 as uuidv4 } from 'uuid'
-import { Id } from '@/convex/_generated/dataModel' // ✅ Needed for proper typing
+import { Id } from '@/convex/_generated/dataModel'
 import AgentPreviewModal from './AgentPreviewModal'
 
 const CreateAgentSection = () => {
@@ -27,7 +27,7 @@ const CreateAgentSection = () => {
   const [agentName, setAgentName] = useState('')
   const [loader, setLoader] = useState(false)
 
-  const { userDetail } = useContext(UserDetailContext) // userDetail comes from context
+  const { userDetail, setUserDetail } = useContext(UserDetailContext)
   const createAgentMutation = useMutation(api.agent.CreateAgent)
   const router = useRouter()
 
@@ -41,15 +41,27 @@ const CreateAgentSection = () => {
       const agentId = uuidv4() // Generate unique agentId
 
       // Call Convex mutation
-      await createAgentMutation({
+      const result = await createAgentMutation({
         name: agentName,
         agentId,
         userId: userDetail._id as Id<"UserTable">, // ✅ TypeScript fix
       })
 
+      setUserDetail((prev) =>
+        prev
+          ? {
+              ...prev,
+              token: result.remainingCredits,
+            }
+          : prev
+      )
+
       // Navigate to the agent-builder page using the agentId (UUID), not the document _id
       router.push('/agent-builder/' + agentId)
     } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'Unable to create agent right now.'
+      alert(message)
       console.error('Error creating agent:', error)
     } finally {
       setLoader(false)
@@ -59,50 +71,72 @@ const CreateAgentSection = () => {
 
   return (
     <div className="space-y-2 flex flex-col justify-center items-center mt-8">
-      <h2 className="font-bold text-2xl">Create AI Agent</h2>
-      <p className="text-lg">
-        Build an AI Agent workflow with custom logic and tools
-      </p>
+      <div className="text-center mb-6">
+        <div className="inline-flex items-center justify-center p-4 bg-gradient-to-r from-violet-100 via-purple-100 to-pink-100 rounded-2xl mb-4">
+          <Sparkles className="h-8 w-8 text-violet-600" />
+        </div>
+        <h2 className="font-bold text-3xl bg-gradient-to-r from-violet-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
+          Create AI Agent
+        </h2>
+        <p className="text-lg text-gray-500 mt-2">
+          Build an AI Agent workflow with custom logic and tools
+        </p>
+      </div>
 
       <div className="flex gap-4 mt-4">
-        {/* Preview Button */}
+        {/* Preview Button - Enhanced Styling */}
         <Button 
           size="lg" 
           variant="outline"
           onClick={() => setOpenPreview(true)}
+          className="gap-2 px-8 py-6 text-lg rounded-2xl border-2 border-violet-200 hover:border-violet-400 hover:bg-gradient-to-r hover:from-violet-50 hover:to-purple-50 transition-all hover:shadow-lg hover:shadow-purple-500/20"
         >
-          <Eye className="h-5 w-5 mr-2" />
+          <Eye className="h-5 w-5" />
           Preview
         </Button>
 
-        {/* Create Button */}
+        {/* Create Button - Enhanced Styling */}
         <Dialog open={openDialog} onOpenChange={setOpenDialog}>
           <DialogTrigger asChild>
-            <Button size="lg">
-              <Plus className="h-5 w-5 mr-2" />
+            <Button size="lg" className="gap-2 px-8 py-6 text-lg rounded-2xl bg-gradient-to-r from-violet-600 via-purple-600 to-pink-600 hover:from-violet-700 hover:via-purple-700 hover:to-pink-700 shadow-xl shadow-purple-500/25 transition-all hover:scale-105 hover:shadow-2xl">
+              <Plus className="h-5 w-5" />
               Create
             </Button>
           </DialogTrigger>
 
-          <DialogContent>
+          <DialogContent className="sm:max-w-md">
             <DialogHeader>
-              <DialogTitle>Enter Agent Name</DialogTitle>
+              <DialogTitle className="flex items-center gap-2">
+                <Wand2 className="h-5 w-5 text-violet-600" />
+                Enter Agent Name
+              </DialogTitle>
             </DialogHeader>
 
             <div className="grid gap-4 py-4">
               <Input
-                placeholder="Agent Name"
+                placeholder="My Awesome Agent"
                 value={agentName}
                 onChange={(e) => setAgentName(e.target.value)}
+                className="h-12 rounded-xl border-2 border-violet-200 focus:border-violet-500 focus:ring-violet-200 text-lg"
+                autoFocus
               />
+              <p className="text-xs text-gray-500">
+                Give your agent a descriptive name to help you identify it later
+              </p>
             </div>
 
             <DialogFooter>
               <DialogClose asChild>
-                <Button variant="ghost">Cancel</Button>
+                <Button variant="ghost" className="rounded-xl">
+                  Cancel
+                </Button>
               </DialogClose>
 
-              <Button onClick={createAgent} disabled={loader}>
+              <Button 
+                onClick={createAgent} 
+                disabled={loader || !agentName.trim()}
+                className="rounded-xl bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700"
+              >
                 {loader && (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 )}
@@ -123,3 +157,4 @@ const CreateAgentSection = () => {
 }
 
 export default CreateAgentSection
+

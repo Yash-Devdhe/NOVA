@@ -2,6 +2,7 @@
  * NOVA - GitHub Upload Script
  * 
  * This script uploads the NOVA project to a GitHub repository named "NOVA"
+ * Account: Yash_Devdhe
  * 
  * Prerequisites:
  * 1. Install GitHub CLI: https://cli.github.com/
@@ -12,7 +13,7 @@
  *   node scripts/upload-to-github.js
  * 
  * Or run with custom options:
- *   node scripts/upload-to-github.js --token YOUR_TOKEN --repo NOVA
+ *   node scripts/upload-to-github.js --token YOUR_TOKEN
  */
 
 const { execSync } = require('child_process');
@@ -20,31 +21,31 @@ const fs = require('fs');
 const path = require('path');
 
 // Configuration
-const REPO_NAME = process.env.REPO_NAME || 'NOVA';
+const REPO_OWNER = 'Yash_Devdhe';
+const REPO_NAME = 'NOVA';
 const REPO_DESCRIPTION = 'NOVA - No-Code Virtual Agents Platform with AI, Weather, Maps, Video & Audio Generation';
 const DEFAULT_BRANCH = 'main';
 
 // Parse command line arguments
 const args = process.argv.slice(2);
 let githubToken = null;
-let customRepoName = REPO_NAME;
 
 for (let i = 0; i < args.length; i++) {
   if (args[i] === '--token' && args[i + 1]) {
     githubToken = args[i + 1];
   }
-  if (args[i] === '--repo' && args[i + 1]) {
-    customRepoName = args[i + 1];
-  }
 }
 
-console.log(`
-╔═══════════════════════════════════════════════════════════╗
-║           NOVA - GitHub Upload Script                    ║
-║                                                           ║
-║  Uploading to repository: ${customRepoName.padEnd(30)}║
-╚═══════════════════════════════════════════════════════════╝
-`);
+var consoleMsg = [
+'╔═══════════════════════════════════════════════════════════╗',
+'║           NOVA - GitHub Upload Script                    ║',
+'║                                                           ║',
+'║  Account: ' + REPO_OWNER.padEnd(42) + '║',
+'║  Repository: ' + REPO_NAME.padEnd(40) + '║',
+'╚═══════════════════════════════════════════════════════════╝'
+].join('\n');
+
+console.log(consoleMsg);
 
 // Check if gh is installed
 function checkGitHubCLI() {
@@ -162,7 +163,7 @@ async function uploadToGitHub() {
   const projectDir = path.join(__dirname, '..');
   process.chdir(projectDir);
   
-  console.log(`\n📁 Working directory: ${process.cwd()}`);
+  console.log('\n📁 Working directory: ' + process.cwd());
   
   // Initialize git
   initGit();
@@ -184,28 +185,16 @@ async function uploadToGitHub() {
   if (stagedFiles.length === 0) {
     console.log('✅ No files to commit (everything is up to date)');
   } else {
-    console.log(`   ${stagedFiles.length} file(s) staged`);
+    console.log('   ' + stagedFiles.length + ' file(s) staged');
   }
   
   // Commit changes
   console.log('\n💾 Committing changes...');
   try {
-    const commitMessage = `feat: NOVA v1.0 - No-Code Virtual Agents Platform
-
-Features:
-- Agent Builder with visual workflow
-- Real-time Weather API integration
-- Google Maps API integration
-- Video generation with limits (like Gemini)
-- Audio/TTS generation
-- Custom API support
-- Code generation (JavaScript, Python, TypeScript)
-- API key management per agent
-- Media generation limits
-
-Built with Next.js, Convex, and Tailwind CSS`;
+    const commitMessage = 'feat: NOVA v1.0 - No-Code Virtual Agents Platform\n\nFeatures:\n- Enhanced Dashboard Preview with scrollbars\n- Real-time Image & Video generation with progress indicators\n- Professional & colorful UI design\n- Agent Builder with visual workflow\n- Real-time Weather API integration\n- Google Maps API integration\n- Video generation with limits\n- Audio/TTS generation\n- Custom API support\n- Code generation (JavaScript, Python, TypeScript)\n- API key management per agent\n- Media generation limits\n\nBuilt with Next.js, Convex, and Tailwind CSS';
     
-    execSync(`git commit -m "${commitMessage.replace(/"/g, '\\"')}"`, { stdio: 'inherit' });
+    const escapedMsg = commitMessage.replace(/"/g, '\\"');
+    execSync('git commit -m "' + escapedMsg + '"', { stdio: 'inherit' });
     console.log('✅ Changes committed');
   } catch (error) {
     // Commit might fail if there are no changes
@@ -214,65 +203,96 @@ Built with Next.js, Convex, and Tailwind CSS`;
   
   // Create or update remote
   console.log('\n🔗 Setting up GitHub repository...');
+  
+  const repoUrl = 'https://github.com/' + REPO_OWNER + '/' + REPO_NAME + '.git';
+  
   try {
-    // Try to create the repository
-    execSync(`gh repo create ${customRepoName} --source=. --public --description "${REPO_DESCRIPTION}" --push`, { 
-      stdio: 'inherit',
-      env: { ...process.env, GH_TOKEN: githubToken }
-    });
-    console.log('✅ Repository created and pushed to GitHub!');
+    // Check if remote exists
+    execSync('git remote get-url origin', { stdio: 'pipe' });
+    console.log('   Remote already exists');
+    
+    // Push changes
+    console.log('   Pushing changes to GitHub...');
+    execSync('git push -u origin main', { stdio: 'inherit' });
+    console.log('✅ Changes pushed to GitHub!');
   } catch (error) {
-    // If repo already exists, just push
+    // Remote doesn't exist, create it
     try {
-      // Check if remote exists
-      execSync('git remote get-url origin', { stdio: 'pipe' });
-      console.log('   Remote already exists, pushing changes...');
-      execSync('git push -u origin main', { stdio: 'inherit' });
-      console.log('✅ Changes pushed to GitHub!');
-    } catch (pushError) {
-      console.log('   Repository might already exist. Trying alternative method...');
+      console.log('   Creating repository on GitHub...');
       
-      // Try with explicit push
+      // Try to create the repository using gh
+      const createCmd = 'gh repo create ' + REPO_NAME + ' --owner ' + REPO_OWNER + ' --public --description "' + REPO_DESCRIPTION + '" --source=. --push';
+      execSync(createCmd, { 
+        stdio: 'inherit',
+        env: { ...process.env, GH_TOKEN: githubToken }
+      });
+      
+      console.log('✅ Repository created and pushed to GitHub!');
+    } catch (createError) {
+      // If that fails, try alternative method
+      console.log('   Trying alternative method...');
+      
       try {
-        execSync(`gh repo create ${customRepoName} --public --description "${REPO_DESCRIPTION}" --clone=false`, { 
-          stdio: 'pipe',
-          env: { ...process.env, GH_TOKEN: githubToken }
-        });
-        
-        // Get the repo HTTPS URL
-        const repoUrl = `https://github.com/${process.env.GITHUB_USER || 'user'}/${customRepoName}.git`;
-        execSync(`git remote add origin ${repoUrl}`, { stdio: 'pipe' });
+        // Set the remote manually
+        execSync('git remote add origin ' + repoUrl, { stdio: 'pipe' });
         execSync('git push -u origin main', { stdio: 'inherit' });
         console.log('✅ Repository created and pushed!');
-      } catch (createError) {
-        console.log('   Repository creation skipped (may already exist)');
+      } catch (pushError) {
+        console.log('   Repository might already exist. Attempting force push...');
+        
+        try {
+          const createOnlyCmd = 'gh repo create ' + REPO_NAME + ' --owner ' + REPO_OWNER + ' --public --description "' + REPO_DESCRIPTION + '" --clone=false';
+          execSync(createOnlyCmd, { 
+            stdio: 'pipe',
+            env: { ...process.env, GH_TOKEN: githubToken }
+          });
+          
+          execSync('git push -u origin main --force', { stdio: 'inherit' });
+          console.log('✅ Repository synced with GitHub!');
+        } catch (finalError) {
+          console.log('   Repository creation skipped (may already exist)');
+          
+          // Try one more time with different approach
+          try {
+            execSync('git push -u origin main --force', { stdio: 'inherit' });
+            console.log('✅ Changes force pushed to GitHub!');
+          } catch (e) {
+            console.log('   Push failed. Please push manually using: git push -u origin main');
+          }
+        }
       }
     }
   }
   
   // Print success message
-  console.log(`
-╔═══════════════════════════════════════════════════════════╗
-║                   🎉 Upload Complete!                     ║
-╚═══════════════════════════════════════════════════════════╝
-
-📦 Repository: ${customRepoName}
-🌐 URL: https://github.com/${process.env.GITHUB_USER || 'your-username'}/${customRepoName}
-
-Next steps:
-1. Visit your repository on GitHub
-2. Add environment variables in GitHub Secrets:
-   - OPENAI_API_KEY
-   - NEXT_PUBLIC_CONVEX_DEPLOYMENT_URL
-   - NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
-   - CLERK_SECRET_KEY
-
-3. Deploy to Vercel or your preferred hosting
-
-📖 Documentation: Check README.md for setup instructions
-
-Thank you for using NOVA! 🚀
-`);
+  var successMsg = [
+'',
+'╔═══════════════════════════════════════════════════════════╗',
+'║                   🎉 Upload Complete!                     ║',
+'╚═══════════════════════════════════════════════════════════╝',
+'',
+'📦 Repository: ' + REPO_NAME,
+'👤 Owner: ' + REPO_OWNER,
+'🌐 URL: https://github.com/' + REPO_OWNER + '/' + REPO_NAME,
+'',
+'Next steps:',
+'1. Visit your repository on GitHub',
+'2. Add environment variables in GitHub Secrets:',
+'   - OPENAI_API_KEY',
+'   - REPLICATE_API_TOKEN',
+'   - NEXT_PUBLIC_CONVEX_DEPLOYMENT_URL',
+'   - NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY',
+'   - CLERK_SECRET_KEY',
+'',
+'3. Deploy to Vercel or your preferred hosting',
+'',
+'📖 Documentation: Check README.md for setup instructions',
+'',
+'Thank you for using NOVA! 🚀',
+''
+  ].join('\n');
+  
+  console.log(successMsg);
 }
 
 // Run the upload

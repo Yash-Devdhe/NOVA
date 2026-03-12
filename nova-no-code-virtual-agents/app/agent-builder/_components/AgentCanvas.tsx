@@ -15,7 +15,8 @@ import {
   X,
   ArrowRight,
   Globe,
-  CheckCircle
+  CheckCircle,
+  Link,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -33,7 +34,6 @@ const nodeIcons: Record<string, React.ElementType> = {
   end: Square,
   if: GitBranch,
   while: RefreshCw,
-  edge: ArrowRight,
   agent: Bot,
   api: Globe,
   llm: MessageSquare,
@@ -47,7 +47,6 @@ const nodeColors: Record<string, string> = {
   end: "bg-red-100 border-red-300",
   if: "bg-purple-100 border-purple-300",
   while: "bg-blue-100 border-blue-300",
-  edge: "bg-cyan-100 border-cyan-300",
   agent: "bg-yellow-100 border-yellow-300",
   api: "bg-teal-100 border-teal-300",
   llm: "bg-indigo-100 border-indigo-300",
@@ -161,14 +160,35 @@ const APIConfigPanel: React.FC<{
   const [apiUrl, setApiUrl] = useState(node.config?.apiUrl || "");
   const [method, setMethod] = useState(node.config?.method || "GET");
   const [apiKey, setApiKey] = useState(node.config?.apiKey || "");
+  const [showApiKey, setShowApiKey] = useState(false);
+  const [errors, setErrors] = useState<{ name?: string; apiUrl?: string }>({});
+
+  const validateForm = () => {
+    const newErrors: { name?: string; apiUrl?: string } = {};
+    
+    if (!name.trim()) {
+      newErrors.name = "API call name is required";
+    }
+    
+    if (!apiUrl.trim()) {
+      newErrors.apiUrl = "API URL is required";
+    } else if (!/^https?:\/\/.+/.test(apiUrl)) {
+      newErrors.apiUrl = "Please enter a valid URL (http:// or https://)";
+    }
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
 
   const handleNameChange = (value: string) => {
     setName(value);
+    setErrors(prev => ({ ...prev, name: undefined }));
     onUpdateNode({ ...node, config: { ...node.config, name: value } });
   };
 
   const handleApiUrlChange = (value: string) => {
     setApiUrl(value);
+    setErrors(prev => ({ ...prev, apiUrl: undefined }));
     onUpdateNode({ ...node, config: { ...node.config, apiUrl: value } });
   };
 
@@ -182,70 +202,134 @@ const APIConfigPanel: React.FC<{
     onUpdateNode({ ...node, config: { ...node.config, apiKey: value } });
   };
 
+  const handleSave = () => {
+    if (validateForm()) {
+      console.log("API Tool Settings Saved:", {
+        toolType: "api",
+        nodeId: node.id,
+        config: { name, apiUrl, method, apiKey },
+        timestamp: new Date().toISOString(),
+      });
+      onClose();
+    }
+  };
+
+  const methodColors: Record<string, string> = {
+    GET: "bg-green-100 text-green-700 border-green-200",
+    POST: "bg-blue-100 text-blue-700 border-blue-200",
+    PUT: "bg-yellow-100 text-yellow-700 border-yellow-200",
+    DELETE: "bg-red-100 text-red-700 border-red-200",
+    PATCH: "bg-purple-100 text-purple-700 border-purple-200",
+  };
+
   return (
-    <div className="absolute z-20 w-[320px] bg-white rounded-lg shadow-xl border border-teal-200 mt-2">
-      <div className="flex items-center justify-between p-3 border-b bg-teal-50 rounded-t-lg">
+    <div className="absolute z-20 w-[360px] bg-white rounded-lg shadow-xl border border-teal-200 mt-2">
+      <div className="flex items-center justify-between p-3 border-b bg-gradient-to-r from-teal-50 to-cyan-50 rounded-t-lg">
         <div className="flex items-center gap-2">
           <Globe className="h-4 w-4 text-teal-600" />
           <span className="font-bold text-sm text-teal-900">API Tool</span>
         </div>
-        <button onClick={onClose} className="p-1 hover:bg-teal-100 rounded">
+        <button onClick={onClose} className="p-1 hover:bg-teal-100 rounded transition-colors">
           <X className="h-4 w-4 text-teal-600" />
         </button>
       </div>
-      <div className="p-3 border-b bg-teal-50/50">
-        <p className="text-xs text-teal-700">Configure external API endpoint</p>
+      <div className="p-3 border-b bg-teal-50/30">
+        <p className="text-xs text-teal-700">Configure external API endpoint to call</p>
       </div>
-      <div className="p-3 space-y-3">
+      <div className="p-4 space-y-4">
+        {/* API Call Name */}
         <div>
-          <Label className="text-xs font-medium text-gray-600">Tool Name</Label>
+          <Label className="text-xs font-medium text-gray-600 flex items-center gap-1">
+            API Call Name
+            <span className="text-red-500">*</span>
+          </Label>
           <Input
-            placeholder="My API Call"
+            placeholder="e.g., Get Weather Data"
             value={name}
             onChange={(e) => handleNameChange(e.target.value)}
-            className="mt-1 text-sm"
+            className={`mt-1 text-sm ${errors.name ? "border-red-500 focus:ring-red-500" : ""}`}
           />
+          {errors.name && (
+            <p className="text-xs text-red-500 mt-1">{errors.name}</p>
+          )}
         </div>
+
+        {/* API URL */}
         <div>
-          <Label className="text-xs font-medium text-gray-600">API URL</Label>
+          <Label className="text-xs font-medium text-gray-600 flex items-center gap-1">
+            API URL
+            <span className="text-red-500">*</span>
+          </Label>
           <Input
-            placeholder="https://api.example.com/endpoint"
+            placeholder="https://api.example.com/data?q={{query}}"
             value={apiUrl}
             onChange={(e) => handleApiUrlChange(e.target.value)}
-            className="mt-1 text-sm font-mono"
+            className={`mt-1 text-sm font-mono ${errors.apiUrl ? "border-red-500 focus:ring-red-500" : ""}`}
           />
+          {errors.apiUrl && (
+            <p className="text-xs text-red-500 mt-1">{errors.apiUrl}</p>
+          )}
+          <p className="text-xs text-gray-400 mt-1">Use {"{{query}}"} for dynamic user input</p>
         </div>
+
+        {/* HTTP Method */}
         <div>
           <Label className="text-xs font-medium text-gray-600">HTTP Method</Label>
-          <select
-            value={method}
-            onChange={(e) => handleMethodChange(e.target.value)}
-            className="mt-1 w-full p-2 text-sm border rounded"
-          >
-            <option value="GET">GET</option>
-            <option value="POST">POST</option>
-            <option value="PUT">PUT</option>
-            <option value="DELETE">DELETE</option>
-            <option value="PATCH">PATCH</option>
-          </select>
+          <div className="mt-1 flex gap-2">
+            {["GET", "POST", "PUT", "DELETE", "PATCH"].map((m) => (
+              <button
+                key={m}
+                type="button"
+                onClick={() => handleMethodChange(m)}
+                className={`flex-1 py-2 px-3 text-xs font-medium rounded-md border transition-all ${
+                  method === m
+                    ? methodColors[m]
+                    : "bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100"
+                }`}
+              >
+                {m}
+              </button>
+            ))}
+          </div>
         </div>
+
+        {/* API Key */}
         <div>
-          <Label className="text-xs font-medium text-gray-600">API Key</Label>
-          <Input
-            type="password"
-            placeholder="Enter API key (optional)"
-            value={apiKey}
-            onChange={(e) => handleApiKeyChange(e.target.value)}
-            className="mt-1 text-sm"
-          />
+          <Label className="text-xs font-medium text-gray-600">API Key (Optional)</Label>
+          <div className="relative mt-1">
+            <Input
+              type={showApiKey ? "text" : "password"}
+              placeholder="Enter API key if required"
+              value={apiKey}
+              onChange={(e) => handleApiKeyChange(e.target.value)}
+              className="text-sm pr-10 font-mono"
+            />
+            <button
+              type="button"
+              onClick={() => setShowApiKey(!showApiKey)}
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+            >
+              {showApiKey ? (
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                </svg>
+              ) : (
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                </svg>
+              )}
+            </button>
+          </div>
+          <p className="text-xs text-gray-400 mt-1">Leave empty if API doesn't require authentication</p>
         </div>
       </div>
-      <div className="p-3">
+      <div className="p-3 border-t bg-gray-50 rounded-b-lg">
         <button
-          onClick={onClose}
+          onClick={handleSave}
           className="w-full py-2 bg-teal-600 text-white rounded-lg font-medium text-sm hover:bg-teal-700 transition-colors"
         >
-          Save
+          Save Configuration
         </button>
       </div>
     </div>
@@ -318,73 +402,6 @@ const UserApprovalConfigPanel: React.FC<{
   );
 };
 
-// Edge Config Panel
-const EdgeConfigPanel: React.FC<{
-  node: ToolNode;
-  nodes: ToolNode[];
-  onUpdateNode: (node: ToolNode) => void;
-  onClose: () => void;
-}> = ({ node, nodes, onUpdateNode, onClose }) => {
-  const [source, setSource] = useState(node.config?.source || "");
-  const [target, setTarget] = useState(node.config?.target || "");
-
-  const handleSourceChange = (value: string) => {
-    setSource(value);
-    onUpdateNode({ ...node, config: { ...node.config, source: value } });
-  };
-
-  const handleTargetChange = (value: string) => {
-    setTarget(value);
-    onUpdateNode({ ...node, config: { ...node.config, target: value } });
-  };
-
-  const availableNodes = nodes.filter(n => n.type !== "edge");
-
-  return (
-    <div className="absolute z-20 w-[280px] bg-white rounded-lg shadow-xl border border-cyan-200 mt-2">
-      <div className="flex items-center justify-between p-3 border-b bg-cyan-50 rounded-t-lg">
-        <div className="flex items-center gap-2">
-          <ArrowRight className="h-4 w-4 text-cyan-600" />
-          <span className="font-medium text-sm text-cyan-900">Edge Connection</span>
-        </div>
-        <button onClick={onClose} className="p-1 hover:bg-cyan-100 rounded">
-          <X className="h-4 w-4 text-cyan-600" />
-        </button>
-      </div>
-      <div className="p-3 border-b">
-        <Label className="text-xs font-medium text-gray-600">From Node</Label>
-        <select
-          value={source}
-          onChange={(e) => handleSourceChange(e.target.value)}
-          className="mt-1 w-full p-2 text-sm border rounded"
-        >
-          <option value="">Select source node</option>
-          {availableNodes.map((n) => (
-            <option key={n.id} value={n.id}>
-              {n.type} - {n.id}
-            </option>
-          ))}
-        </select>
-      </div>
-      <div className="p-3">
-        <Label className="text-xs font-medium text-gray-600">To Node</Label>
-        <select
-          value={target}
-          onChange={(e) => handleTargetChange(e.target.value)}
-          className="mt-1 w-full p-2 text-sm border rounded"
-        >
-          <option value="">Select target node</option>
-          {availableNodes.filter(n => n.id !== source).map((n) => (
-            <option key={n.id} value={n.id}>
-              {n.type} - {n.id}
-            </option>
-          ))}
-        </select>
-      </div>
-    </div>
-  );
-};
-
 const AgentCanvas: React.FC<AgentCanvasProps> = ({
   nodes,
   selectedNode,
@@ -396,10 +413,15 @@ const AgentCanvas: React.FC<AgentCanvasProps> = ({
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const [dragNodeId, setDragNodeId] = useState<string | null>(null);
+  
+  // Connection state
+  const [connectingFrom, setConnectingFrom] = useState<string | null>(null);
+  const [mousePosition, setMousePosition] = useState<{ x: number; y: number } | null>(null);
 
   const handleMouseDown = (e: React.MouseEvent, node: ToolNode) => {
     if ((e.target as HTMLElement).closest(".delete-btn")) return;
     if ((e.target as HTMLElement).closest(".config-panel")) return;
+    if ((e.target as HTMLElement).closest(".connection-dot")) return;
     
     e.stopPropagation();
     setIsDragging(true);
@@ -414,6 +436,58 @@ const AgentCanvas: React.FC<AgentCanvasProps> = ({
     }
     onNodeSelect(node);
   };
+
+  // Handle connection dot click
+  const handleConnectionClick = (e: React.MouseEvent, nodeId: string) => {
+    e.stopPropagation();
+    
+    if (connectingFrom === null) {
+      // Start connecting from this node
+      setConnectingFrom(nodeId);
+    } else if (connectingFrom !== nodeId) {
+      // Complete connection to this node
+      const sourceNode = nodes.find(n => n.id === connectingFrom);
+      const targetNode = nodes.find(n => n.id === nodeId);
+      
+      if (sourceNode && targetNode) {
+        // Add connection to source node
+        const existingConnections = sourceNode.config?.connections || [];
+        onUpdateNode({
+          ...sourceNode,
+          config: {
+            ...sourceNode.config,
+            connections: [...existingConnections, { targetId: nodeId }]
+          }
+        });
+      }
+      
+      setConnectingFrom(null);
+    } else {
+      // Cancel connection
+      setConnectingFrom(null);
+    }
+  };
+
+  // Track mouse for connection line
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (connectingFrom && canvasRef.current) {
+        const rect = canvasRef.current.getBoundingClientRect();
+        setMousePosition({
+          x: e.clientX - rect.left,
+          y: e.clientY - rect.top,
+        });
+      }
+    };
+
+    if (connectingFrom) {
+      window.addEventListener("mousemove", handleMouseMove);
+    }
+
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+    };
+  }, [connectingFrom]);
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
@@ -451,28 +525,40 @@ const AgentCanvas: React.FC<AgentCanvasProps> = ({
   const handleCanvasClick = (e: React.MouseEvent) => {
     if (e.target === canvasRef.current || (e.target as HTMLElement).closest('.grid-background')) {
       onNodeSelect(null);
+      setConnectingFrom(null);
     }
   };
 
-  const renderConnections = () => {
-    return nodes.filter(n => n.type === "edge").map((edgeNode) => {
-      const sourceNode = nodes.find(n => n.id === edgeNode.config?.source);
-      const targetNode = nodes.find(n => n.id === edgeNode.config?.target);
-      
-      if (!sourceNode || !targetNode) return null;
-      
-      return (
-        <line
-          key={`edge-${edgeNode.id}`}
-          x1={sourceNode.position.x + 75}
-          y1={sourceNode.position.y + 40}
-          x2={targetNode.position.x + 75}
-          y2={targetNode.position.y}
-          stroke="#06b6d4"
-          strokeWidth="2"
-        />
-      );
+  // Get connections from node config
+  const getConnections = () => {
+    const connections: Array<{ from: ToolNode; to: ToolNode }> = [];
+    
+    nodes.forEach(node => {
+      const nodeConnections = node.config?.connections || [];
+      nodeConnections.forEach((conn: { targetId: string }) => {
+        const targetNode = nodes.find(n => n.id === conn.targetId);
+        if (targetNode) {
+          connections.push({ from: node, to: targetNode });
+        }
+      });
     });
+    
+    return connections;
+  };
+
+  const renderConnections = () => {
+    return getConnections().map((conn, index) => (
+      <line
+        key={`connection-${conn.from.id}-${conn.to.id}-${index}`}
+        x1={conn.from.position.x + 75}
+        y1={conn.from.position.y + 40}
+        x2={conn.to.position.x + 75}
+        y2={conn.to.position.y}
+        stroke="#06b6d4"
+        strokeWidth="2"
+        markerEnd="url(#arrowhead)"
+      />
+    ));
   };
 
   return (
@@ -491,6 +577,9 @@ const AgentCanvas: React.FC<AgentCanvasProps> = ({
             <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse">
               <circle cx="1" cy="1" r="1" fill="#d1d5db" />
             </pattern>
+            <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+              <polygon points="0 0, 10 3.5, 0 7" fill="#06b6d4" />
+            </marker>
           </defs>
           <rect width="100%" height="100%" fill="url(#grid)" />
         </svg>
@@ -498,6 +587,23 @@ const AgentCanvas: React.FC<AgentCanvasProps> = ({
 
       <svg className="absolute inset-0 w-full h-full pointer-events-none">
         {renderConnections()}
+        
+        {/* Draw temporary connection line while connecting */}
+        {connectingFrom && mousePosition && (() => {
+          const sourceNode = nodes.find(n => n.id === connectingFrom);
+          if (!sourceNode) return null;
+          return (
+            <line
+              x1={sourceNode.position.x + 75}
+              y1={sourceNode.position.y + 40}
+              x2={mousePosition.x}
+              y2={mousePosition.y}
+              stroke="#06b6d4"
+              strokeWidth="2"
+              strokeDasharray="5,5"
+            />
+          );
+        })()}
       </svg>
 
       {nodes.map((node) => {
@@ -506,9 +612,9 @@ const AgentCanvas: React.FC<AgentCanvasProps> = ({
         const isSelected = selectedNode?.id === node.id;
         const isIfNode = node.type === "if";
         const isWhileNode = node.type === "while";
-        const isEdgeNode = node.type === "edge";
         const isApiNode = node.type === "api";
         const isUserApprovalNode = node.type === "userApproval";
+        const isConnecting = connectingFrom === node.id;
 
         return (
           <div
@@ -523,7 +629,7 @@ const AgentCanvas: React.FC<AgentCanvasProps> = ({
             <div
               className={`w-[150px] rounded-lg border-2 p-3 ${colorClass} ${
                 isSelected ? "ring-2 ring-blue-500 shadow-lg" : "shadow-md"
-              }`}
+              } ${isConnecting ? "ring-2 ring-cyan-500 animate-pulse" : ""}`}
             >
               <div className="flex items-center justify-between mb-2">
                 <Icon className="h-5 w-5" />
@@ -541,6 +647,26 @@ const AgentCanvas: React.FC<AgentCanvasProps> = ({
               <p className="text-xs text-gray-500 mt-1 truncate">
                 {node.config?.name || node.id}
               </p>
+              
+              {/* Connection dot at bottom */}
+              {node.type !== "end" && (
+                <div 
+                  className="connection-dot absolute -bottom-3 left-1/2 transform -translate-x-1/2 w-6 h-6 bg-cyan-500 rounded-full flex items-center justify-center cursor-pointer hover:bg-cyan-600 hover:scale-125 transition-all shadow-md"
+                  onClick={(e) => handleConnectionClick(e, node.id)}
+                  title={isConnecting ? "Click to connect" : "Click to start connection"}
+                >
+                  <Link className="h-3 w-3 text-white" />
+                </div>
+              )}
+              
+              {/* Connection dot at top for receiving connections */}
+              {node.type !== "start" && (
+                <div 
+                  className="connection-dot absolute -top-3 left-1/2 transform -translate-x-1/2 w-4 h-4 bg-white border-2 border-cyan-500 rounded-full cursor-pointer hover:bg-cyan-100 transition-all"
+                  onClick={(e) => handleConnectionClick(e, node.id)}
+                  title="Click to connect here"
+                />
+              )}
             </div>
 
             {isIfNode && isSelected && (
@@ -574,18 +700,17 @@ const AgentCanvas: React.FC<AgentCanvasProps> = ({
                 onClose={() => onNodeSelect(null)}
               />
             )}
-
-            {isEdgeNode && isSelected && (
-              <EdgeConfigPanel
-                node={node}
-                nodes={nodes}
-                onUpdateNode={onUpdateNode}
-                onClose={() => onNodeSelect(null)}
-              />
-            )}
           </div>
         );
       })}
+
+      {/* Connection mode indicator */}
+      {connectingFrom && (
+        <div className="absolute top-4 left-1/2 transform -translate-x-1/2 bg-cyan-500 text-white px-4 py-2 rounded-full shadow-lg flex items-center gap-2 z-50">
+          <Link className="h-4 w-4 animate-pulse" />
+          <span className="text-sm font-medium">Click another node to connect, or click canvas to cancel</span>
+        </div>
+      )}
 
       {nodes.length === 0 && (
         <div className="absolute inset-0 flex items-center justify-center">

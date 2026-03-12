@@ -68,6 +68,15 @@ const API_SERVICES = [
     link: 'https://replicate.com/account/api-tokens',
     free: false,
   },
+  {
+    id: 'freepublicapis',
+    name: 'FreePublicAPIs',
+    description: 'Collection of free public APIs',
+    icon: Globe,
+    placeholder: 'Enter your FreePublicAPIs key (if required)',
+    link: 'https://www.freepublicapis.com/api',
+    free: true,
+  },
 ];
 
 const NodePropertiesPanel: React.FC<AgentSettingsProps> = ({ onSave, agentId }) => {

@@ -129,7 +129,7 @@ const AgentPreviewModal = ({
         {
           id: "welcome",
           role: "assistant",
-          content: `Hello! I'm ${agentName}. I'm ready to help you with your tasks. You can:\n\n- Chat with me naturally\n- Generate images by typing "create an image of..." or "draw..."\n- Generate videos by typing "make a video of..." or "create a video of..."\n\nHow can I assist you today?`,
+          content: `Hello! I'm ${agentName}. I'm ready to help you with your tasks.\n\nYou can:\n- Chat with me naturally\n- Ask about weather (e.g., "weather in Tokyo")\n- Test your API tools\n- Generate images by typing "create an image of..."\n\nHow can I assist you today?`,
           timestamp: new Date(),
           type: "text",
         },
@@ -148,6 +148,7 @@ const AgentPreviewModal = ({
       setTimeout(() => inputRef.current?.focus(), 100);
     }
   }, [open]);
+
   const isImagePrompt = (text: string) =>
     ["create an image", "draw", "generate an image", "make an image", "create image"].some(
       (value) => text.includes(value)
@@ -163,7 +164,7 @@ const AgentPreviewModal = ({
 
   const extractCity = (text: string) => {
     const regex =
-      /(?:in|of|for)\s+([\p{L}\p{M}\s.-]+?)(?:\?|$| today| now| tomorrow| please| with)/iu;
+      /(?:in|of|for|at)\s+([\p{L}\p{M}\s.-]+?)(?:\?|$| today| now| tomorrow| please| with)/iu;
     const match = text.match(regex);
     return (match?.[1] || "").trim();
   };
@@ -218,7 +219,8 @@ const AgentPreviewModal = ({
   const buildApiUrl = (templateUrl: string, userInput: string) =>
     templateUrl
       .replaceAll("{{input}}", encodeURIComponent(userInput))
-      .replaceAll("{{query}}", encodeURIComponent(userInput));
+      .replaceAll("{{query}}", encodeURIComponent(userInput))
+      .replaceAll("{{city}}", encodeURIComponent(extractCity(userInput) || "London"));
 
   const parseJsonIfNeeded = (value: unknown) => {
     if (typeof value !== "string") return value;
@@ -243,17 +245,6 @@ const AgentPreviewModal = ({
     setMessages((prev) => [...prev, message]);
   };
 
-  const parseJsonResponse = async (response: Response) => {
-    const raw = await response.text();
-    try {
-      return JSON.parse(raw);
-    } catch {
-      throw new Error(
-        `Server returned non-JSON response (status ${response.status}): ${raw.slice(0, 120)}`
-      );
-    }
-  };
-
   const handleSendMessage = async () => {
     if (!input.trim() || loading || generatingMedia) return;
     const currentInput = input.trim();
@@ -271,113 +262,169 @@ const AgentPreviewModal = ({
     setInput("");
     setLoading(true);
     try {
-      if (["hi", "hello", "hey"].includes(lowerInput)) {
+      // Greeting
+      if (["hi", "hello", "hey", "good morning", "good evening"].some(g => lowerInput.includes(g))) {
         addAssistantMessage({
           id: nextMessageId(),
           role: "assistant",
-          content: `Hello! I'm ${agentName}. Ask for workflow help, custom API calls, or weather (if your agent includes a weather API tool).`,
+          content: `Hello! I'm ${agentName}. How can I help you today? You can ask me about weather, test your API configurations, or chat naturally.`,
           timestamp: new Date(),
           type: "text",
         });
         return;
       }
-      if (isWeatherPrompt(lowerInput) && canHandleWeather()) {
-        const city = extractCity(currentInput);
-        if (!city) {
+      
+      // Weather handling
+      if (isWeatherPrompt(lowerInput)) {
+        const weatherApiNode = getWeatherApiNode();
+        
+        if (!weatherApiNode) {
           addAssistantMessage({
             id: nextMessageId(),
             role: "assistant",
-            content: "Please specify a city, for example: weather in Tokyo.",
+            content: `I can help you with weather! To use weather features, you need to add an API tool in the agent builder with a weather API URL.\n\nFor example, add an API tool with this URL:\n\`https://api.openweathermap.org/data/2.5/weather?q={{query}}&appid={{apiKey}}\`\n\nOr use Open-Meteo (free, no key needed):\n\`https://api.open-meteo.com/v1/forecast?latitude={{lat}}&longitude={{lon}}&current=temperature_2m\``,
             timestamp: new Date(),
             type: "text",
           });
           return;
         }
-        const weatherApiNode = getWeatherApiNode();
+        
+        const city = extractCity(currentInput);
+        if (!city) {
+          addAssistantMessage({
+            id: nextMessageId(),
+            role: "assistant",
+            content: "Please specify a city for weather. For example: 'weather in Tokyo' or 'temperature in London'.",
+            timestamp: new Date(),
+            type: "text",
+          });
+          return;
+        }
+        
+        // Try weather API
         const nodeApiKey = String(weatherApiNode?.config?.apiKey || "").trim();
         const globalApiKey = String(apiKeys.openweathermap || "").trim();
         const effectiveApiKey = nodeApiKey || globalApiKey;
         const provider = effectiveApiKey ? "openweathermap" : "open-meteo";
-        const weatherRes = await fetch("/api/weather", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            city,
-            provider,
-            apiKey: effectiveApiKey || undefined,
-          }),
-        });
-        const weatherData = await parseJsonResponse(weatherRes);
-        if (!weatherRes.ok) {
-          throw new Error(weatherData.error || "Could not fetch weather data.");
+        
+        try {
+          const weatherRes = await fetch("/api/weather", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              city,
+              provider,
+              apiKey: effectiveApiKey || undefined,
+            }),
+          });
+          
+          if (!weatherRes.ok) {
+            const errorData = await weatherRes.json().catch(() => ({}));
+            throw new Error(errorData.error || `Weather API returned ${weatherRes.status}`);
+          }
+          
+          const weatherData = await weatherRes.json();
+          addAssistantMessage({
+            id: nextMessageId(),
+            role: "assistant",
+            content: `🌤️ **Current weather in ${weatherData.city}, ${weatherData.country}**\n\n` +
+              `• Temperature: ${weatherData.temperature}°C (feels like ${weatherData.feelsLike}°C)\n` +
+              `• Condition: ${weatherData.description}\n` +
+              `• Humidity: ${weatherData.humidity}%\n` +
+              `• Wind: ${weatherData.windSpeed} m/s\n` +
+              `• Pressure: ${weatherData.pressure} hPa`,
+            timestamp: new Date(),
+            type: "weather",
+            metadata: weatherData,
+          });
+        } catch (weatherError) {
+          addAssistantMessage({
+            id: nextMessageId(),
+            role: "assistant",
+            content: `I encountered an issue fetching weather data: ${weatherError instanceof Error ? weatherError.message : 'Unknown error'}\n\n` +
+              `Please check your API configuration. For free weather data without an API key, use Open-Meteo.`,
+            timestamp: new Date(),
+            type: "text",
+          });
         }
-        addAssistantMessage({
-          id: nextMessageId(),
-          role: "assistant",
-          content: `Current weather in ${weatherData.city}, ${weatherData.country}: ${weatherData.temperature} C, feels like ${weatherData.feelsLike} C, ${weatherData.description}.`,
-          timestamp: new Date(),
-          type: "weather",
-          metadata: weatherData,
-        });
         return;
       }
+      
+      // Media generation prompts
       if (isImagePrompt(lowerInput) || isVideoPrompt(lowerInput)) {
         addAssistantMessage({
           id: nextMessageId(),
           role: "assistant",
-          content:
-            "Image/video generation is available in Dashboard Preview. Agent Builder Preview is focused on testing your workflow and API tools.",
+          content: `Media generation is available in the Dashboard Preview mode. The Agent Builder Preview is focused on testing your workflow and API tools.\n\n` +
+            `To test image/video generation, save your agent and open it from the dashboard.`,
           timestamp: new Date(),
           type: "text",
         });
         return;
       }
+      
+      // API tool handling
       const apiNode = getApiNode(currentInput);
       if (apiNode) {
-        const mergedApiKey =
-          apiNode.config.apiKey ||
-          apiKeys.custom ||
-          apiKeys.openweathermap ||
-          "";
-        const resolvedUrl = buildApiUrl(
-          String(apiNode.config.apiUrl || ""),
-          currentInput
-        ).replaceAll("{{apiKey}}", encodeURIComponent(mergedApiKey));
-        const apiRes = await fetch("/api/custom-api", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            url: resolvedUrl,
-            method: apiNode.config.method || "GET",
-            apiKey: mergedApiKey,
-            headers: parseJsonIfNeeded(apiNode.config.headers) || {},
-            body:
-              parseJsonIfNeeded(apiNode.config.bodyParams || apiNode.config.body) ||
-              undefined,
-          }),
-        });
-        const apiData = await parseJsonResponse(apiRes);
-        if (!apiRes.ok) {
-          throw new Error(apiData.error || "API call failed.");
+        const apiNodeConfig = apiNode.config || {};
+        const mergedApiKey = apiNodeConfig.apiKey || apiKeys.custom || apiKeys.openweathermap || "";
+        const apiUrl = String(apiNodeConfig.apiUrl || "");
+        
+        if (!apiUrl) {
+          addAssistantMessage({
+            id: nextMessageId(),
+            role: "assistant",
+            content: `The API tool "${apiNodeConfig.name || 'Unnamed'}" doesn't have a URL configured. Please set the API URL in the agent builder.`,
+            timestamp: new Date(),
+            type: "text",
+          });
+          return;
         }
-        if (
-          typeof apiData?.data?.raw === "string" &&
-          apiData.data.raw.trim().toLowerCase().startsWith("<!doctype")
-        ) {
-          throw new Error(
-            "API returned an HTML page instead of JSON. Use a direct weather endpoint like https://api.openweathermap.org/data/2.5/weather?q={{query}}&appid={{apiKey}}&units=metric"
-          );
+        
+        try {
+          const resolvedUrl = buildApiUrl(apiUrl, currentInput).replaceAll("{{apiKey}}", encodeURIComponent(mergedApiKey));
+          
+          const apiRes = await fetch("/api/custom-api", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              url: resolvedUrl,
+              method: apiNodeConfig.method || "GET",
+              apiKey: mergedApiKey,
+              headers: parseJsonIfNeeded(apiNodeConfig.headers) || {},
+              body: parseJsonIfNeeded(apiNodeConfig.bodyParams || apiNodeConfig.body) || undefined,
+            }),
+          });
+          
+          const apiData = await apiRes.json();
+          
+          if (!apiRes.ok) {
+            throw new Error(apiData.error || apiData.hint || `API returned status ${apiRes.status}`);
+          }
+          
+          addAssistantMessage({
+            id: nextMessageId(),
+            role: "assistant",
+            content: `✅ **API Response** (${apiData.status} ${apiData.statusText})\n\n\`\`\`\n${formatPayload(apiData.data)}\n\`\`\``,
+            timestamp: new Date(),
+            type: "text",
+            metadata: apiData,
+          });
+        } catch (apiError) {
+          addAssistantMessage({
+            id: nextMessageId(),
+            role: "assistant",
+            content: `❌ **API Error**\n\n${apiError instanceof Error ? apiError.message : 'Failed to call API'}\n\n` +
+              `Make sure your API URL is correct and includes proper query parameters.\n` +
+              `For example: \`https://api.example.com/data?param=value\``,
+            timestamp: new Date(),
+            type: "text",
+          });
         }
-        addAssistantMessage({
-          id: nextMessageId(),
-          role: "assistant",
-          content: `API response (${apiData.status}):\n${formatPayload(apiData.data)}`,
-          timestamp: new Date(),
-          type: "text",
-          metadata: apiData,
-        });
         return;
       }
+      
+      // Default: OpenAI chat
       const chatRes = await fetch("/api/openai", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -385,14 +432,23 @@ const AgentPreviewModal = ({
           prompt: currentInput,
           type: "chat",
           providerApiKey: apiKeys.openai || undefined,
-          systemPrompt:
-            "You are an agent workflow tester. Focus on validating node logic, input/output quality, and production-ready agent behavior.",
+          systemPrompt: `You are ${agentName}, an AI agent assistant. You can help with general questions, coding, and more.`,
         }),
       });
-      const chatData = await parseJsonResponse(chatRes);
+      
       if (!chatRes.ok) {
-        throw new Error(chatData.error || "Chat request failed.");
+        const chatError = await chatRes.json().catch(() => ({}));
+        addAssistantMessage({
+          id: nextMessageId(),
+          role: "assistant",
+          content: `I apologize, but I couldn't process your request right now. ${chatError.error || ''}`,
+          timestamp: new Date(),
+          type: "text",
+        });
+        return;
       }
+      
+      const chatData = await chatRes.json();
       addAssistantMessage({
         id: nextMessageId(),
         role: "assistant",
@@ -404,7 +460,7 @@ const AgentPreviewModal = ({
       addAssistantMessage({
         id: nextMessageId(),
         role: "assistant",
-        content: error instanceof Error ? error.message : "I encountered an unexpected error.",
+        content: `I encountered an unexpected error: ${error instanceof Error ? error.message : 'Unknown error'}. Please try again.`,
         timestamp: new Date(),
         type: "text",
       });
@@ -414,6 +470,7 @@ const AgentPreviewModal = ({
       setMediaType(null);
     }
   };
+
   // Handle quick actions
   const handleQuickAction = async (action: string) => {
     setInput(action);
@@ -564,7 +621,7 @@ const AgentPreviewModal = ({
             </div>
 
             {/* Messages */}
-            <div className="flex-1 p-4 overflow-y-scroll">
+            <div className="flex-1 p-4 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-300 scrollbar-track-slate-100">
               <div className="space-y-4">
                 {messages.map((message) => (
                   <div
@@ -637,23 +694,23 @@ const AgentPreviewModal = ({
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => handleQuickAction("Test API response for user query: Tokyo")}
-                className="text-xs h-7"
-              >
-                Test API
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
                 onClick={() => handleQuickAction("Weather in Mumbai")}
                 className="text-xs h-7"
               >
                 Test Weather
               </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleQuickAction("What can you do?")}
+                className="text-xs h-7"
+              >
+                Help
+              </Button>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="outline" size="sm" className="text-xs h-7">
-                    Suggestions
+                    More
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent>
@@ -661,7 +718,7 @@ const AgentPreviewModal = ({
                     What can you do?
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => handleQuickAction("Help me with coding")}>
-                    Help me with coding
+                    Help with coding
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => handleQuickAction("Tell me a joke")}>
                     Tell me a joke
@@ -683,25 +740,25 @@ const AgentPreviewModal = ({
                   disabled={loading || generatingMedia}
                 />
                 <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    disabled={loading || generatingMedia}
-                    className="bg-blue-600 hover:bg-blue-700"
-                  >
-                    <Sparkles className="h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem
-                    onClick={() => setInput("Run my configured API for this query: ")}
-                  >
-                    Run API Tool
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setInput("Validate my workflow logic")}>
-                    Validate Workflow
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      disabled={loading || generatingMedia}
+                      className="bg-blue-600 hover:bg-blue-700"
+                    >
+                      <Sparkles className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem
+                      onClick={() => setInput("Test my API with query: example")}
+                    >
+                      Test API
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setInput("Validate workflow logic")}>
+                      Validate Workflow
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
                 <Button
                   onClick={handleSendMessage}
                   disabled={loading || generatingMedia || !input.trim()}
@@ -714,7 +771,7 @@ const AgentPreviewModal = ({
           </div>
 
           {/* Right Panel - Workflow Preview */}
-          <div className="flex-1 bg-slate-50 overflow-y-scroll">
+          <div className="flex-1 bg-slate-50 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-300 scrollbar-track-slate-100">
             <div className="p-4 border-b bg-white">
               <h3 className="font-semibold text-slate-700 flex items-center gap-2">
                 <Workflow className="h-4 w-4" />

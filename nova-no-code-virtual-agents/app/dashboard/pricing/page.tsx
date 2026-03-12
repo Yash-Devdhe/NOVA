@@ -8,146 +8,74 @@ import { UserDetailContext } from "@/context/UserDetailsContext"
 import { CREDIT_PLANS, type CreditPlan } from "@/lib/pricing"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 
-declare global {
-  interface Window {
-    Razorpay: new (options: Record<string, unknown>) => {
-      open: () => void
-      on: (event: string, callback: (payload: unknown) => void) => void
-    }
-  }
-}
-
-function loadRazorpayScript() {
-  return new Promise<boolean>((resolve) => {
-    const existing = document.querySelector('script[src="https://checkout.razorpay.com/v1/checkout.js"]')
-    if (existing) return resolve(true)
-
-    const script = document.createElement("script")
-    script.src = "https://checkout.razorpay.com/v1/checkout.js"
-    script.onload = () => resolve(true)
-    script.onerror = () => resolve(false)
-    document.body.appendChild(script)
-  })
-}
+const DUMMY_METHODS = [
+  { id: "phonepe", label: "PhonePe" },
+  { id: "paytm", label: "Paytm" },
+  { id: "gpay", label: "Google Pay" },
+  { id: "upi", label: "UPI" },
+]
 
 export default function PricingPage() {
   const { userDetail, setUserDetail } = useContext(UserDetailContext)
   const upgradeCredits = useMutation(api.user.UpgradeCredits)
+
   const [loadingPlanId, setLoadingPlanId] = useState<string | null>(null)
   const [successMessage, setSuccessMessage] = useState("")
   const [errorMessage, setErrorMessage] = useState("")
+  const [selectedPlan, setSelectedPlan] = useState<CreditPlan | null>(null)
+  const [paymentDialogOpen, setPaymentDialogOpen] = useState(false)
 
   const currentCredits = useMemo(() => userDetail?.token ?? 0, [userDetail?.token])
 
-  const handleSubscribe = async (plan: CreditPlan) => {
-    if (!userDetail?._id) {
-      setErrorMessage("User not found. Please sign in again.")
+  const handleSubscribe = (plan: CreditPlan) => {
+    setErrorMessage("")
+    setSuccessMessage("")
+    setSelectedPlan(plan)
+    setPaymentDialogOpen(true)
+  }
+
+  const handleDummyPayment = async (methodId: string) => {
+    if (!userDetail?._id || !selectedPlan) {
+      setErrorMessage("User or plan not found. Please retry.")
       return
     }
 
-    setErrorMessage("")
-    setSuccessMessage("")
-    setLoadingPlanId(plan.id)
+    setLoadingPlanId(selectedPlan.id)
     try {
-      const scriptReady = await loadRazorpayScript()
-      if (!scriptReady) {
-        throw new Error("Could not load payment gateway.")
-      }
-
-      const orderRes = await fetch("/api/payments/create-order", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ planId: plan.id }),
+      const paymentId = `dummy_${methodId}_${Date.now()}`
+      const result = await upgradeCredits({
+        userId: userDetail._id as Id<"UserTable">,
+        credits: selectedPlan.credits,
+        planName: `${selectedPlan.name} (${methodId.toUpperCase()})`,
+        paymentId,
       })
 
-      const orderJson = await orderRes.json()
-      if (!orderRes.ok) {
-        throw new Error(orderJson.error || "Could not create payment order.")
-      }
-
-      const razorpay = new window.Razorpay({
-        key: orderJson.keyId,
-        amount: orderJson.amount,
-        currency: orderJson.currency,
-        name: "NOVA Credits",
-        description: `${plan.name} subscription`,
-        order_id: orderJson.orderId,
-        method: {
-          upi: true,
-          card: true,
-          netbanking: true,
-          wallet: true,
-          emi: true,
-          paylater: true,
-        },
-        handler: async (response: Record<string, string>) => {
-          try {
-            setLoadingPlanId(plan.id)
-            const verifyRes = await fetch("/api/payments/verify", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                razorpayPaymentId: response.razorpay_payment_id,
-                razorpayOrderId: response.razorpay_order_id,
-                razorpaySignature: response.razorpay_signature,
-              }),
-            })
-            const verifyJson = await verifyRes.json()
-            if (!verifyJson.verified) {
-              throw new Error("Payment verification failed.")
+      setUserDetail((prev) =>
+        prev
+          ? {
+              ...prev,
+              token: result.token,
             }
+          : prev
+      )
 
-            const result = await upgradeCredits({
-              userId: userDetail._id as Id<"UserTable">,
-              credits: plan.credits,
-              planName: plan.name,
-              paymentId: response.razorpay_payment_id,
-            })
-
-            setUserDetail((prev) =>
-              prev
-                ? {
-                    ...prev,
-                    token: result.token,
-                  }
-                : prev
-            )
-            setSuccessMessage(`Payment successful. ${plan.credits.toLocaleString()} credits added.`)
-          } catch (error) {
-            setErrorMessage(error instanceof Error ? error.message : "Payment verification failed.")
-          } finally {
-            setLoadingPlanId(null)
-          }
-        },
-        prefill: {
-          name: userDetail.name || "",
-          email: userDetail.email || "",
-        },
-        notes: {
-          userId: userDetail._id,
-          planId: plan.id,
-          credits: String(plan.credits),
-        },
-        modal: {
-          ondismiss: () => {
-            setErrorMessage("Payment cancelled.")
-            setLoadingPlanId(null)
-          },
-        },
-        theme: {
-          color: "#0f172a",
-        },
-      })
-
-      razorpay.on("payment.failed", () => {
-        setErrorMessage("Payment failed. Please retry with another method.")
-        setLoadingPlanId(null)
-      })
-
-      razorpay.open()
+      setSuccessMessage(
+        `${selectedPlan.credits.toLocaleString()} credits added via ${methodId.toUpperCase()}.`
+      )
+      setPaymentDialogOpen(false)
+      setSelectedPlan(null)
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : "Payment failed.")
+      setErrorMessage(error instanceof Error ? error.message : "Unable to add credits.")
+    } finally {
       setLoadingPlanId(null)
     }
   }
@@ -157,7 +85,7 @@ export default function PricingPage() {
       <div>
         <h2 className="text-3xl font-bold text-slate-900">Pricing & Subscription</h2>
         <p className="text-slate-600">
-          Default account includes 5000 credits. Purchase additional credits to continue building.
+          Select a dummy payment method to instantly add credits to your profile.
         </p>
         <p className="mt-2 text-sm font-medium text-slate-700">Current credits: {currentCredits}</p>
       </div>
@@ -183,13 +111,54 @@ export default function PricingPage() {
               <p className="text-3xl font-bold">Rs. {plan.amountInr}</p>
               <p className="text-sm text-slate-600">{plan.description}</p>
               <p className="text-sm font-semibold">{plan.credits.toLocaleString()} extra credits</p>
-              <Button className="w-full" onClick={() => handleSubscribe(plan)} disabled={loadingPlanId === plan.id}>
-                {loadingPlanId === plan.id ? "Processing..." : "Subscribe"}
+              <Button className="w-full" onClick={() => handleSubscribe(plan)}>
+                Subscribe
               </Button>
             </CardContent>
           </Card>
         ))}
       </div>
+
+      <Dialog open={paymentDialogOpen} onOpenChange={setPaymentDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Choose Payment Method</DialogTitle>
+            <DialogDescription>
+              {selectedPlan
+                ? `Dummy payment for ${selectedPlan.name} (Rs. ${selectedPlan.amountInr})`
+                : "Select a payment method"}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="grid gap-2">
+            {DUMMY_METHODS.map((method) => (
+              <Button
+                key={method.id}
+                variant="outline"
+                onClick={() => handleDummyPayment(method.id)}
+                disabled={!selectedPlan || loadingPlanId === selectedPlan?.id}
+              >
+                {loadingPlanId === selectedPlan?.id
+                  ? "Processing..."
+                  : `Pay with ${method.label}`}
+              </Button>
+            ))}
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="ghost"
+              onClick={() => {
+                setPaymentDialogOpen(false)
+                setSelectedPlan(null)
+              }}
+              disabled={!!loadingPlanId}
+            >
+              Cancel
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </section>
   )
 }

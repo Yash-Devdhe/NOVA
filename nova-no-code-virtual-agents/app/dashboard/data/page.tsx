@@ -28,7 +28,7 @@ export default function DataPage() {
   const summary = useMemo(
     () => ({
       totalAgents: agents.length,
-      publishedAgents: agents.filter((agent) => agent.published).length,
+      savedAgents: agents.length,
       draftAgents: agents.filter((agent) => !agent.published).length,
     }),
     [agents]
@@ -50,9 +50,9 @@ export default function DataPage() {
         </Card>
         <Card>
           <CardHeader>
-            <CardTitle>Published</CardTitle>
+            <CardTitle>Saved Agents</CardTitle>
           </CardHeader>
-          <CardContent className="text-3xl font-bold">{summary.publishedAgents}</CardContent>
+          <CardContent className="text-3xl font-bold">{summary.savedAgents}</CardContent>
         </Card>
         <Card>
           <CardHeader>
