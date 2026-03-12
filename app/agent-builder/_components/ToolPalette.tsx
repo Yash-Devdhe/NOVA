@@ -8,7 +8,7 @@ import {
   Workflow,
   Play,
   Square,
-  ArrowRight,
+  Link,
   Globe,
   CheckCircle,
 } from "lucide-react";
@@ -21,6 +21,7 @@ interface ToolPaletteProps {
  * ToolPalette Component
  * Displays available tools that users can add to their agent workflow
  * Tools include: Start, End, If/Else, While Loop, Edge, API, UserApproval, Sub-Workflow
+ * Connection is handled via click-to-connect on the canvas
  */
 const tools = [
   {
@@ -54,9 +55,9 @@ const tools = [
   {
     type: "edge",
     label: "Edge",
-    icon: ArrowRight,
+    icon: Link,
     color: "bg-cyan-100 text-cyan-600",
-    description: "Connect two nodes",
+    description: "Connect two nodes on the canvas",
   },
   {
     type: "api",
@@ -88,6 +89,9 @@ const ToolPalette: React.FC<ToolPaletteProps> = ({ onAddNode }) => {
   };
 
   const handleClick = (toolType: string) => {
+    if (toolType === "edge") {
+      return;
+    }
     const newNode: ToolNode = {
       id: `${toolType}-${Date.now()}`,
       type: toolType as ToolNode["type"],
@@ -103,8 +107,6 @@ const ToolPalette: React.FC<ToolPaletteProps> = ({ onAddNode }) => {
         return { condition: "", elseCondition: "" };
       case "while":
         return { condition: "" };
-      case "edge":
-        return { source: "", target: "" };
       case "api":
         return { name: "", method: "GET", apiUrl: "", includeApiKey: false, apiKey: "", bodyParams: "" };
       case "userApproval":
@@ -116,24 +118,42 @@ const ToolPalette: React.FC<ToolPaletteProps> = ({ onAddNode }) => {
     }
   };
 
+  const EdgeLine = () => (
+    <div className="flex items-center gap-2">
+      <span className="h-2 w-2 rounded-full bg-cyan-500" />
+      <span className="h-0.5 w-8 bg-cyan-500" />
+      <span className="h-2 w-2 rounded-full bg-cyan-500" />
+    </div>
+  );
+
   return (
     <div className="p-4">
       <h2 className="font-semibold text-lg mb-4">Toolbox</h2>
       <p className="text-sm text-gray-500 mb-4">
-        Click or drag tools to add them to the canvas
+        Click tools to add them to the canvas
       </p>
       <div className="space-y-2">
         {tools.map((tool) => (
           <div
             key={tool.type}
-            draggable
+            draggable={tool.type !== "edge"}
             onDragStart={(e) => handleDragStart(e, tool.type)}
             onClick={() => handleClick(tool.type)}
-            className="flex items-center gap-3 p-3 rounded-lg border bg-white hover:bg-gray-50 cursor-pointer transition-all hover:shadow-md"
+            className={`flex items-center gap-3 p-3 rounded-lg border bg-white transition-all hover:shadow-md group ${
+              tool.type === "edge"
+                ? "cursor-default"
+                : "hover:bg-gray-50 cursor-pointer"
+            }`}
           >
-            <div className={`p-2 rounded-lg ${tool.color}`}>
-              <tool.icon className="h-5 w-5" />
-            </div>
+            {tool.type === "edge" ? (
+              <div className="p-2 rounded-lg bg-cyan-100 text-cyan-600 group-hover:scale-110 transition-transform">
+                <EdgeLine />
+              </div>
+            ) : (
+              <div className={`p-2 rounded-lg ${tool.color} group-hover:scale-110 transition-transform`}>
+                <tool.icon className="h-5 w-5" />
+              </div>
+            )}
             <div>
               <p className="font-medium text-sm">{tool.label}</p>
               <p className="text-xs text-gray-500">{tool.description}</p>
@@ -142,13 +162,35 @@ const ToolPalette: React.FC<ToolPaletteProps> = ({ onAddNode }) => {
         ))}
       </div>
 
-      <div className="mt-6 p-4 bg-blue-50 rounded-lg">
+      {/* Connection Instructions */}
+      <div className="mt-6 p-4 bg-gradient-to-br from-cyan-50 to-blue-50 rounded-lg border border-cyan-100">
+        <h3 className="font-medium text-sm text-cyan-800 mb-2 flex items-center gap-2">
+          <Link className="h-4 w-4" />
+          How to Connect
+        </h3>
+        <ul className="text-xs text-cyan-700 space-y-2">
+          <li className="flex items-start gap-2">
+            <span className="w-5 h-5 rounded-full bg-cyan-200 text-cyan-700 flex items-center justify-center text-xs font-bold flex-shrink-0">1</span>
+            <span>Click on a node's <strong>output dot</strong></span>
+          </li>
+          <li className="flex items-start gap-2">
+            <span className="w-5 h-5 rounded-full bg-cyan-200 text-cyan-700 flex items-center justify-center text-xs font-bold flex-shrink-0">2</span>
+            <span>Then click on <strong>another node</strong> to connect</span>
+          </li>
+          <li className="flex items-start gap-2">
+            <span className="w-5 h-5 rounded-full bg-cyan-200 text-cyan-700 flex items-center justify-center text-xs font-bold flex-shrink-0">3</span>
+            <span>Connections show as <strong>arrows</strong> between nodes</span>
+          </li>
+        </ul>
+      </div>
+
+      <div className="mt-4 p-4 bg-blue-50 rounded-lg">
         <h3 className="font-medium text-sm text-blue-800 mb-2">Quick Tips</h3>
         <ul className="text-xs text-blue-600 space-y-1">
           <li>- Click to add a tool</li>
-          <li>- Drag nodes to reposition them</li>
-          <li>- Select a node to edit its properties</li>
-          <li>- Use Edge to connect nodes</li>
+          <li>- Drag nodes to reposition</li>
+          <li>- Select a node to edit properties</li>
+          <li>- Click output dots to connect</li>
         </ul>
       </div>
     </div>
@@ -156,3 +198,4 @@ const ToolPalette: React.FC<ToolPaletteProps> = ({ onAddNode }) => {
 };
 
 export default ToolPalette;
+
