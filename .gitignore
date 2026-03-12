@@ -14,6 +14,8 @@ node_modules/
 # Next.js Build Files
 # =========================
 .next/
+.next_backup_*/
+.next_backup_**/
 .dist/
 out/
 build/
