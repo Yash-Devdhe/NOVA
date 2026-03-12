@@ -20,8 +20,8 @@ interface ToolPaletteProps {
 /**
  * ToolPalette Component
  * Displays available tools that users can add to their agent workflow
- * Tools include: Start, End, If/Else, While Loop, API, UserApproval, Sub-Workflow
- * Connection is handled via click-to-connect on the canvas (no Edge tool needed)
+ * Tools include: Start, End, If/Else, While Loop, Edge, API, UserApproval, Sub-Workflow
+ * Connection is handled via click-to-connect on the canvas
  */
 const tools = [
   {
@@ -53,6 +53,13 @@ const tools = [
     description: "Repeat until condition is met",
   },
   {
+    type: "edge",
+    label: "Edge",
+    icon: Link,
+    color: "bg-cyan-100 text-cyan-600",
+    description: "Connect two nodes on the canvas",
+  },
+  {
     type: "api",
     label: "API",
     icon: Globe,
@@ -82,6 +89,9 @@ const ToolPalette: React.FC<ToolPaletteProps> = ({ onAddNode }) => {
   };
 
   const handleClick = (toolType: string) => {
+    if (toolType === "edge") {
+      return;
+    }
     const newNode: ToolNode = {
       id: `${toolType}-${Date.now()}`,
       type: toolType as ToolNode["type"],
@@ -108,6 +118,14 @@ const ToolPalette: React.FC<ToolPaletteProps> = ({ onAddNode }) => {
     }
   };
 
+  const EdgeLine = () => (
+    <div className="flex items-center gap-2">
+      <span className="h-2 w-2 rounded-full bg-cyan-500" />
+      <span className="h-0.5 w-8 bg-cyan-500" />
+      <span className="h-2 w-2 rounded-full bg-cyan-500" />
+    </div>
+  );
+
   return (
     <div className="p-4">
       <h2 className="font-semibold text-lg mb-4">Toolbox</h2>
@@ -118,14 +136,24 @@ const ToolPalette: React.FC<ToolPaletteProps> = ({ onAddNode }) => {
         {tools.map((tool) => (
           <div
             key={tool.type}
-            draggable
+            draggable={tool.type !== "edge"}
             onDragStart={(e) => handleDragStart(e, tool.type)}
             onClick={() => handleClick(tool.type)}
-            className="flex items-center gap-3 p-3 rounded-lg border bg-white hover:bg-gray-50 cursor-pointer transition-all hover:shadow-md group"
+            className={`flex items-center gap-3 p-3 rounded-lg border bg-white transition-all hover:shadow-md group ${
+              tool.type === "edge"
+                ? "cursor-default"
+                : "hover:bg-gray-50 cursor-pointer"
+            }`}
           >
-            <div className={`p-2 rounded-lg ${tool.color} group-hover:scale-110 transition-transform`}>
-              <tool.icon className="h-5 w-5" />
-            </div>
+            {tool.type === "edge" ? (
+              <div className="p-2 rounded-lg bg-cyan-100 text-cyan-600 group-hover:scale-110 transition-transform">
+                <EdgeLine />
+              </div>
+            ) : (
+              <div className={`p-2 rounded-lg ${tool.color} group-hover:scale-110 transition-transform`}>
+                <tool.icon className="h-5 w-5" />
+              </div>
+            )}
             <div>
               <p className="font-medium text-sm">{tool.label}</p>
               <p className="text-xs text-gray-500">{tool.description}</p>

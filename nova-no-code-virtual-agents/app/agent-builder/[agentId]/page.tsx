@@ -10,7 +10,19 @@ import CodeEditor from "../_components/CodeEditor";
 import NodePropertiesPanel from "../_components/NodePropertiesPanel";
 import AgentPreviewModal from "../_components/AgentPreviewModal";
 import { Button } from "@/components/ui/button";
-import { Save, Play, ArrowLeft, Settings, Check, X, Loader2 } from "lucide-react";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import {
+  Save,
+  Play,
+  ArrowLeft,
+  Settings,
+  Check,
+  X,
+  Loader2,
+  PanelLeft,
+  PanelRight,
+  Code,
+} from "lucide-react";
 
 /**
  * ToolNode Interface
@@ -48,6 +60,9 @@ const AgentBuilderPage = () => {
   const [loading, setLoading] = useState(false);
   const [saved, setSaved] = useState(true);
   const [previewOpen, setPreviewOpen] = useState(false);
+  const [toolboxOpen, setToolboxOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [codeOpen, setCodeOpen] = useState(false);
 
   // Update agent name when agent details are fetched
   useEffect(() => {
@@ -151,10 +166,61 @@ const AgentBuilderPage = () => {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 md:hidden">
+            <Sheet open={toolboxOpen} onOpenChange={setToolboxOpen}>
+              <SheetTrigger asChild>
+                <Button variant="outline" size="icon" aria-label="Open toolbox">
+                  <PanelLeft className="h-4 w-4" />
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="left" className="p-0">
+                <div className="h-full overflow-y-auto">
+                  <ToolPalette onAddNode={handleAddNode} />
+                </div>
+              </SheetContent>
+            </Sheet>
+            <Sheet open={settingsOpen} onOpenChange={setSettingsOpen}>
+              <SheetTrigger asChild>
+                <Button variant="outline" size="icon" aria-label="Open settings">
+                  <PanelRight className="h-4 w-4" />
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="right" className="p-0">
+                <div className="h-full overflow-y-auto bg-white">
+                  <NodePropertiesPanel
+                    agentId={agentId}
+                    onSave={(settings) => {
+                      console.log("Agent settings:", settings);
+                    }}
+                  />
+                </div>
+              </SheetContent>
+            </Sheet>
+            <Sheet open={codeOpen} onOpenChange={setCodeOpen}>
+              <SheetTrigger asChild>
+                <Button variant="outline" size="icon" aria-label="Open code editor">
+                  <Code className="h-4 w-4" />
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="right" className="p-0 sm:max-w-full">
+                <div className="flex items-center justify-between px-4 py-2 bg-gray-800 border-b">
+                  <span className="text-white text-sm font-medium">Custom Code</span>
+                </div>
+                <CodeEditor
+                  code={customCode}
+                  onChange={(code: string) => {
+                    setCustomCode(code);
+                    setSaved(false);
+                  }}
+                />
+              </SheetContent>
+            </Sheet>
+          </div>
           <Button
             variant="outline"
             size="sm"
             onClick={() => setShowCodeEditor(!showCodeEditor)}
+            className="hidden md:inline-flex"
           >
             <Settings className="h-4 w-4 mr-2" />
             {showCodeEditor ? "Hide Code" : "Custom Code"}
@@ -181,14 +247,14 @@ const AgentBuilderPage = () => {
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
         {/* Tool Palette - Left Sidebar */}
-        <div className="w-64 bg-white border-r overflow-y-auto flex-shrink-0">
+        <div className="hidden md:block w-64 bg-white border-r overflow-y-auto flex-shrink-0">
           <ToolPalette onAddNode={handleAddNode} />
         </div>
 
         {/* Canvas Area */}
-        <div className={`flex-1 overflow-hidden ${showCodeEditor ? 'w-3/5' : 'w-full'}`}>
+        <div className={`flex-1 overflow-hidden ${showCodeEditor ? 'md:w-3/5' : 'w-full'}`}>
           <AgentCanvas
             nodes={nodes}
             selectedNode={selectedNode}
@@ -200,7 +266,7 @@ const AgentBuilderPage = () => {
 
         {/* Code Editor Panel */}
         {showCodeEditor && (
-          <div className="w-2/5 border-l flex-shrink-0">
+          <div className="hidden md:flex w-2/5 border-l flex-shrink-0">
             <div className="flex items-center justify-between px-4 py-2 bg-gray-800 border-b">
               <span className="text-white text-sm font-medium">Custom Code</span>
               <Button 
@@ -223,7 +289,7 @@ const AgentBuilderPage = () => {
         )}
 
         {/* Agent Settings Panel - Right Sidebar - Always visible */}
-        <div className="w-72 bg-white border-l overflow-y-auto flex-shrink-0">
+        <div className="hidden md:block w-72 bg-white border-l overflow-y-auto flex-shrink-0">
           <NodePropertiesPanel
             agentId={agentId}
             onSave={(settings) => {
