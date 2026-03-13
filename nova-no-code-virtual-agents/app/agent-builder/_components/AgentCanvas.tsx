@@ -13,7 +13,6 @@ import {
   Square,
   Trash2,
   X,
-  ArrowRight,
   Globe,
   CheckCircle,
   Link,
