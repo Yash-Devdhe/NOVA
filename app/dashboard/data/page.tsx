@@ -5,7 +5,11 @@ import { useConvex } from "convex/react"
 import { api } from "@/convex/_generated/api"
 import { Id } from "@/convex/_generated/dataModel"
 import { UserDetailContext } from "@/context/UserDetailsContext"
+<<<<<<< HEAD
 import type { Agent } from "../../../types/AgentType"
+=======
+import { Agent } from "../../../types/AgentType"
+>>>>>>> fcb949d08971b4acc79fa3a18c05ce7fbe16e9e1
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 
 export default function DataPage() {

@@ -68,6 +68,9 @@ next-env.d.ts
 node_modules/
 .env*/
 .vercel
+<<<<<<< HEAD
 
 # clerk configuration (can include secrets)
 /.clerk/
+=======
+>>>>>>> fcb949d08971b4acc79fa3a18c05ce7fbe16e9e1

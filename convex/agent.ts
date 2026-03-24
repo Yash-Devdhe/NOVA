@@ -58,6 +58,7 @@ export const GetUserAgents = query({
     userId: v.id("UserTable"),
   },
   handler: async (ctx, args) => {
+<<<<<<< HEAD
     const currentUser = await ctx.db.get(args.userId);
     if (!currentUser) {
       return [];
@@ -74,6 +75,10 @@ export const GetUserAgents = query({
     return agents
       .filter((agent) => allowedUserIds.has(String(agent.userId)))
       .sort((a, b) => (b.updatedAt ?? b.createdAt ?? b._creationTime) - (a.updatedAt ?? a.createdAt ?? a._creationTime));
+=======
+    const result = await ctx.db.query('AgentTable').filter(q => q.eq(q.field('userId'), args.userId)).order('desc').collect();
+    return result;
+>>>>>>> fcb949d08971b4acc79fa3a18c05ce7fbe16e9e1
   },
 })
 
@@ -112,6 +117,7 @@ export const UpdateAgentConfig = mutation({
   },
 })
 
+<<<<<<< HEAD
 // Custom Tools Functions
 export const AddCustomTool = mutation({
   args: {
@@ -281,6 +287,8 @@ export const GetAgentCustomTools = query({
   },
 })
 
+=======
+>>>>>>> fcb949d08971b4acc79fa3a18c05ce7fbe16e9e1
 // Chat History Functions
 export const SaveChatMessage = mutation({
   args: {
@@ -320,6 +328,7 @@ export const GetAgentChatHistory = query({
   },
 })
 
+<<<<<<< HEAD
 // Removed subscription - use query with useQuery for real-time via Convex reactivity
 export const GetAgentChatSubscriptionData = query({
   args: {
@@ -337,6 +346,8 @@ export const GetAgentChatSubscriptionData = query({
   },
 })
 
+=======
+>>>>>>> fcb949d08971b4acc79fa3a18c05ce7fbe16e9e1
 export const ClearAgentChatHistory = mutation({
   args: {
     agentId: v.string(),

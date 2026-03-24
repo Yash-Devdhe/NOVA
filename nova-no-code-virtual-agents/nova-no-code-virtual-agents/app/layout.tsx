@@ -19,7 +19,11 @@ export default function RootLayout({
     <html lang="en">
       <body className={outfit.className} >
         <ClerkProvider
+<<<<<<< HEAD
           publishableKey={process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY!}
+=======
+          clerkJSUrl="https://cdn.jsdelivr.net/npm/@clerk/clerk-js@5/dist/clerk.browser.js"
+>>>>>>> fcb949d08971b4acc79fa3a18c05ce7fbe16e9e1
         >
           <ConvexClientProvider>
             <Provider>

@@ -1,7 +1,10 @@
 "use client";
 
 import React, { useState } from "react";
+<<<<<<< HEAD
 import { useToast } from "@/components/ui/use-toast"
+=======
+>>>>>>> fcb949d08971b4acc79fa3a18c05ce7fbe16e9e1
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -41,6 +44,7 @@ const WhileLoopToolSettings: React.FC<WhileLoopToolSettingsProps> = ({
   const [prompt, setPrompt] = useState(initialConfig.prompt || "");
   const [generating, setGenerating] = useState(false);
   const [saving, setSaving] = useState(false);
+<<<<<<< HEAD
   const { toast } = useToast()
 
   const handleGenerateMedia = async () => {
@@ -49,6 +53,12 @@ const WhileLoopToolSettings: React.FC<WhileLoopToolSettingsProps> = ({
         title: "Missing prompt",
         description: "Please enter a prompt for generation",
       })
+=======
+
+  const handleGenerateMedia = async () => {
+    if (!prompt.trim()) {
+      alert("Please enter a prompt");
+>>>>>>> fcb949d08971b4acc79fa3a18c05ce7fbe16e9e1
       return;
     }
 
@@ -68,6 +78,7 @@ const WhileLoopToolSettings: React.FC<WhileLoopToolSettingsProps> = ({
       // In production, this would call your backend API
       await new Promise(resolve => setTimeout(resolve, 2000));
 
+<<<<<<< HEAD
       toast({
         title: "Generation started",
         description: `${mediaType === "image" ? "Image" : "Video"} generation initiated!`,
@@ -78,6 +89,12 @@ const WhileLoopToolSettings: React.FC<WhileLoopToolSettingsProps> = ({
         description: "Error generating media",
         variant: "destructive",
       });
+=======
+      alert(`${mediaType === "image" ? "Image" : "Video"} generation initiated! Check console for details.`);
+    } catch (error) {
+      console.error("Error generating media:", error);
+      alert("Error generating media");
+>>>>>>> fcb949d08971b4acc79fa3a18c05ce7fbe16e9e1
     } finally {
       setGenerating(false);
     }
@@ -106,6 +123,7 @@ const WhileLoopToolSettings: React.FC<WhileLoopToolSettingsProps> = ({
       });
       
       onSave(config);
+<<<<<<< HEAD
       toast({
         title: "Settings saved",
         description: "While Loop settings saved successfully!",
@@ -116,6 +134,12 @@ const WhileLoopToolSettings: React.FC<WhileLoopToolSettingsProps> = ({
         description: "Error saving settings",
         variant: "destructive",
       });
+=======
+      alert("While Loop settings saved successfully!");
+    } catch (error) {
+      console.error("Error saving while loop settings:", error);
+      alert("Error saving settings");
+>>>>>>> fcb949d08971b4acc79fa3a18c05ce7fbe16e9e1
     } finally {
       setSaving(false);
     }

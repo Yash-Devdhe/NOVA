@@ -53,6 +53,7 @@ const tools = [
     description: "Repeat until condition is met",
   },
   {
+<<<<<<< HEAD
     type: "for",
     label: "For Loop",
     icon: RefreshCw,
@@ -60,6 +61,8 @@ const tools = [
     description: "Iterate with initializer, condition, and increment",
   },
   {
+=======
+>>>>>>> fcb949d08971b4acc79fa3a18c05ce7fbe16e9e1
     type: "edge",
     label: "Edge",
     icon: Link,

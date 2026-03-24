@@ -1,9 +1,14 @@
 'use client'
 
 import React, { useContext, useState } from 'react'
+<<<<<<< HEAD
 import { Loader2, Plus, Eye, Sparkles, Wand2, Layers } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useToast } from '@/components/ui/use-toast'
+=======
+import { Loader2, Plus, Eye, Sparkles, Wand2 } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+>>>>>>> fcb949d08971b4acc79fa3a18c05ce7fbe16e9e1
 import {
   Dialog,
   DialogContent,
@@ -31,11 +36,15 @@ const CreateAgentSection = () => {
   const { userDetail, setUserDetail } = useContext(UserDetailContext)
   const createAgentMutation = useMutation(api.agent.CreateAgent)
   const router = useRouter()
+<<<<<<< HEAD
   const { toast } = useToast()
+=======
+>>>>>>> fcb949d08971b4acc79fa3a18c05ce7fbe16e9e1
 
   // ✅ Function to create a new agent
   const createAgent = async () => {
     try {
+<<<<<<< HEAD
       if (!agentName.trim()) {
         toast({
           title: "Invalid name",
@@ -51,6 +60,10 @@ const CreateAgentSection = () => {
         })
         return
       }
+=======
+      if (!agentName.trim()) return
+      if (!userDetail?._id) return // Safety check: user must exist
+>>>>>>> fcb949d08971b4acc79fa3a18c05ce7fbe16e9e1
 
       setLoader(true)
       const agentId = uuidv4() // Generate unique agentId
@@ -70,23 +83,31 @@ const CreateAgentSection = () => {
             }
           : prev
       )
+<<<<<<< HEAD
       setAgentName('')
 
       toast({
         title: "Agent created!",
         description: `${agentName} is ready. ${result.deductedCredits} credits used.`,
       })
+=======
+>>>>>>> fcb949d08971b4acc79fa3a18c05ce7fbe16e9e1
 
       // Navigate to the agent-builder page using the agentId (UUID), not the document _id
       router.push('/agent-builder/' + agentId)
     } catch (error) {
       const message =
         error instanceof Error ? error.message : 'Unable to create agent right now.'
+<<<<<<< HEAD
       toast({
         title: "Failed to create agent",
         description: message,
         variant: "destructive",
       })
+=======
+      alert(message)
+      console.error('Error creating agent:', error)
+>>>>>>> fcb949d08971b4acc79fa3a18c05ce7fbe16e9e1
     } finally {
       setLoader(false)
       setOpenDialog(false)
@@ -171,7 +192,11 @@ const CreateAgentSection = () => {
         </Dialog>
       </div>
 
+<<<<<<< HEAD
         {/* Agent Preview Modal with sidebar tools + real-time */}
+=======
+      {/* Agent Preview Modal */}
+>>>>>>> fcb949d08971b4acc79fa3a18c05ce7fbe16e9e1
       <AgentPreviewModal 
         open={openPreview} 
         onOpenChange={setOpenPreview} 
@@ -181,3 +206,7 @@ const CreateAgentSection = () => {
 }
 
 export default CreateAgentSection
+<<<<<<< HEAD
+=======
+
+>>>>>>> fcb949d08971b4acc79fa3a18c05ce7fbe16e9e1

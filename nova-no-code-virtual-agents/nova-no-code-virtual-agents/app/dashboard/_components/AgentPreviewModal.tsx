@@ -17,6 +17,10 @@ import {
   ResizablePanel,
   ResizableHandle,
 } from "@/components/ui/resizable";
+<<<<<<< HEAD
+=======
+import { ScrollArea } from "@/components/ui/scroll-area";
+>>>>>>> fcb949d08971b4acc79fa3a18c05ce7fbe16e9e1
 import {
   Send,
   Bot,
@@ -256,7 +260,11 @@ const AgentPreviewModal: React.FC<AgentPreviewModalProps> = ({
                     Available tools for your agent
                   </p>
                 </div>
+<<<<<<< HEAD
                 <div className="h-[calc(100%-60px)] p-4 overflow-y-scroll scrollbar-thin scrollbar-thumb-slate-300 scrollbar-track-slate-100 hover:scrollbar-thumb-slate-400">
+=======
+                <ScrollArea className="h-[calc(100%-60px)] p-4">
+>>>>>>> fcb949d08971b4acc79fa3a18c05ce7fbe16e9e1
                   <div className="space-y-2">
                     {tools.map((tool) => (
                       <div
@@ -307,7 +315,11 @@ const AgentPreviewModal: React.FC<AgentPreviewModalProps> = ({
                       </p>
                     </div>
                   </div>
+<<<<<<< HEAD
                 </div>
+=======
+                </ScrollArea>
+>>>>>>> fcb949d08971b4acc79fa3a18c05ce7fbe16e9e1
               </div>
             </ResizablePanel>
 
@@ -345,7 +357,11 @@ const AgentPreviewModal: React.FC<AgentPreviewModalProps> = ({
                     className="flex-1 m-0 flex flex-col overflow-hidden"
                   >
                     {/* Messages Area */}
+<<<<<<< HEAD
                     <div className="flex-1 p-4 overflow-y-scroll scrollbar-thin scrollbar-thumb-slate-300 scrollbar-track-slate-100 hover:scrollbar-thumb-slate-400">
+=======
+                    <ScrollArea className="flex-1 p-4">
+>>>>>>> fcb949d08971b4acc79fa3a18c05ce7fbe16e9e1
                       <div className="space-y-4">
                         {messages.map((message) => (
                           <div
@@ -428,7 +444,11 @@ const AgentPreviewModal: React.FC<AgentPreviewModalProps> = ({
                         )}
                         <div ref={messagesEndRef} />
                       </div>
+<<<<<<< HEAD
                     </div>
+=======
+                    </ScrollArea>
+>>>>>>> fcb949d08971b4acc79fa3a18c05ce7fbe16e9e1
 
                     {/* Chat Input */}
                     <div className="p-4 border-t">
