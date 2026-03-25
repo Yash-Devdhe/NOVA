@@ -11,10 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-<<<<<<< HEAD
-=======
 import { ScrollArea } from "@/components/ui/scroll-area";
->>>>>>> fcb949d08971b4acc79fa3a18c05ce7fbe16e9e1
 import {
   ResizablePanelGroup,
   ResizablePanel,
@@ -651,11 +648,7 @@ Guidelines for users:
                   </div>
 
                   <TabsContent value="tools" className="flex-1 m-0 overflow-hidden">
-<<<<<<< HEAD
-                    <div className="h-[calc(100%-60px)] overflow-y-scroll scrollbar-thin scrollbar-thumb-slate-300 scrollbar-track-slate-100 hover:scrollbar-thumb-slate-400">
-=======
                     <ScrollArea className="h-[calc(100%-60px)]">
->>>>>>> fcb949d08971b4acc79fa3a18c05ce7fbe16e9e1
                       <div className="p-4 space-y-3">
                         {tools.map((tool, index) => (
                           <div
@@ -677,8 +670,7 @@ Guidelines for users:
                           </div>
                         ))}
                       </div>
-<<<<<<< HEAD
-                    </div>
+                    </ScrollArea>
                   </TabsContent>
 
                   <TabsContent value="guides" className="flex-1 m-0 overflow-hidden">
@@ -689,7 +681,6 @@ Guidelines for users:
 
                   <TabsContent value="guides" className="flex-1 m-0 overflow-hidden">
                     <ScrollArea className="h-[calc(100%-60px)]">
->>>>>>> fcb949d08971b4acc79fa3a18c05ce7fbe16e9e1
                       <div className="p-4 space-y-3">
                         {agentGuidelines.map((guide, index) => (
                           <div
@@ -708,11 +699,7 @@ Guidelines for users:
                           </div>
                         ))}
                       </div>
-<<<<<<< HEAD
-                    </div>
-=======
                     </ScrollArea>
->>>>>>> fcb949d08971b4acc79fa3a18c05ce7fbe16e9e1
                   </TabsContent>
                 </Tabs>
               </div>
@@ -724,11 +711,7 @@ Guidelines for users:
             <ResizablePanel defaultSize={72} minSize={40}>
               <div className="h-full flex flex-col bg-white">
                 {/* Messages Area */}
-<<<<<<< HEAD
-                <div className="flex-1 p-4 overflow-y-scroll scrollbar-thin scrollbar-thumb-slate-300 scrollbar-track-slate-100 hover:scrollbar-thumb-slate-400">
-=======
                 <ScrollArea className="flex-1 p-4">
->>>>>>> fcb949d08971b4acc79fa3a18c05ce7fbe16e9e1
                   <div className="space-y-4">
                     {messages.map((message) => (
                       <div
@@ -822,11 +805,7 @@ Guidelines for users:
                     )}
                     <div ref={messagesEndRef} />
                   </div>
-<<<<<<< HEAD
-                </div>
-=======
                 </ScrollArea>
->>>>>>> fcb949d08971b4acc79fa3a18c05ce7fbe16e9e1
 
                 {/* Chat Input */}
                 <div className="p-4 border-t bg-white/80 backdrop-blur-sm">

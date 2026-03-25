@@ -1,36 +1,13 @@
 "use client"
 
 import * as React from "react"
-<<<<<<< HEAD
-=======
 import * as ScrollAreaPrimitive from "@radix-ui/react-scroll-area"
->>>>>>> fcb949d08971b4acc79fa3a18c05ce7fbe16e9e1
 
 import { cn } from "@/lib/utils"
 
 function ScrollArea({
   className,
   children,
-<<<<<<< HEAD
-  style,
-  ...props
-}: React.HTMLAttributes<HTMLDivElement>) {
-  return (
-    <div
-      className={cn(
-        "relative overflow-auto overflow-x-hidden overscroll-contain scrollbar-thin scrollbar-thumb-slate-300 scrollbar-track-slate-100 hover:scrollbar-thumb-slate-400",
-        className
-      )}
-      style={style}
-      {...props}
-    >
-      {children}
-    </div>
-  )
-}
-
-export { ScrollArea }
-=======
   ...props
 }: React.ComponentProps<typeof ScrollAreaPrimitive.Root>) {
   return (
@@ -79,4 +56,3 @@ function ScrollBar({
 }
 
 export { ScrollArea, ScrollBar }
->>>>>>> fcb949d08971b4acc79fa3a18c05ce7fbe16e9e1
