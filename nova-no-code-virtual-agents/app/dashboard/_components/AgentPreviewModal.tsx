@@ -674,12 +674,6 @@ Guidelines for users:
                   </TabsContent>
 
                   <TabsContent value="guides" className="flex-1 m-0 overflow-hidden">
-                    <div className="h-[calc(100%-60px)] overflow-y-scroll scrollbar-thin scrollbar-thumb-slate-300 scrollbar-track-slate-100 hover:scrollbar-thumb-slate-400">
-=======
-                    </ScrollArea>
-                  </TabsContent>
-
-                  <TabsContent value="guides" className="flex-1 m-0 overflow-hidden">
                     <ScrollArea className="h-[calc(100%-60px)]">
                       <div className="p-4 space-y-3">
                         {agentGuidelines.map((guide, index) => (
