@@ -18,21 +18,16 @@ interface Notification {
   createdAt: number;
 }
 
-<<<<<<< HEAD
 import { useToast } from "@/components/ui/use-toast";
 
 const NotificationBell = () => {
   const { toast } = useToast()
-=======
-const NotificationBell = () => {
->>>>>>> fcb949d08971b4acc79fa3a18c05ce7fbe16e9e1
   const convex = useConvex();
   const { userDetail } = React.useContext(UserDetailContext);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
-<<<<<<< HEAD
 
   const logConvexError = (error: unknown, action: string) => {
     toast({
@@ -40,10 +35,6 @@ const NotificationBell = () => {
       description: error instanceof Error ? error.message : String(error),
       variant: "destructive",
     })
-=======
-  const logConvexError = (error: unknown, action: string) => {
-    console.error(`[NotificationBell] ${action} failed`, error);
->>>>>>> fcb949d08971b4acc79fa3a18c05ce7fbe16e9e1
   };
 
   // Fetch notifications
@@ -63,11 +54,7 @@ const NotificationBell = () => {
         if (!isCancelled) {
           setNotifications([]);
         }
-<<<<<<< HEAD
         logConvexError(error, "Fetch notifications");
-=======
-        logConvexError(error, "fetch notifications");
->>>>>>> fcb949d08971b4acc79fa3a18c05ce7fbe16e9e1
       }
     };
 
@@ -83,11 +70,7 @@ const NotificationBell = () => {
         if (!isCancelled) {
           setUnreadCount(0);
         }
-<<<<<<< HEAD
         logConvexError(error, "Fetch unread count");
-=======
-        logConvexError(error, "fetch unread count");
->>>>>>> fcb949d08971b4acc79fa3a18c05ce7fbe16e9e1
       }
     };
 
@@ -123,11 +106,7 @@ const NotificationBell = () => {
       ));
       setUnreadCount(Math.max(0, unreadCount - 1));
     } catch (error) {
-<<<<<<< HEAD
       logConvexError(error, "Mark as read");
-=======
-      logConvexError(error, "mark as read");
->>>>>>> fcb949d08971b4acc79fa3a18c05ce7fbe16e9e1
     }
   };
 
@@ -140,11 +119,7 @@ const NotificationBell = () => {
       setNotifications(notifications.map(n => ({ ...n, isRead: true })));
       setUnreadCount(0);
     } catch (error) {
-<<<<<<< HEAD
       logConvexError(error, "Mark all as read");
-=======
-      logConvexError(error, "mark all as read");
->>>>>>> fcb949d08971b4acc79fa3a18c05ce7fbe16e9e1
     }
   };
 
@@ -159,11 +134,7 @@ const NotificationBell = () => {
         setUnreadCount(Math.max(0, unreadCount - 1));
       }
     } catch (error) {
-<<<<<<< HEAD
       logConvexError(error, "Delete notification");
-=======
-      logConvexError(error, "delete notification");
->>>>>>> fcb949d08971b4acc79fa3a18c05ce7fbe16e9e1
     }
   };
 

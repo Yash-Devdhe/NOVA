@@ -1,12 +1,8 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-<<<<<<< HEAD
 import { useToast } from "@/components/ui/use-toast"
 import type { ToolNode } from '../../../types/agent-builder';
-=======
-import { ToolNode } from "../[agentId]/page";
->>>>>>> fcb949d08971b4acc79fa3a18c05ce7fbe16e9e1
 import { Button } from "@/components/ui/button";
 import { X, Send, Loader2, RotateCcw, Bot } from "lucide-react";
 
@@ -47,11 +43,8 @@ const PreviewModal: React.FC<PreviewModalProps> = ({
   }, [messages]);
 
   // Log agent details when preview opens
-<<<<<<< HEAD
   const { toast } = useToast()
 
-=======
->>>>>>> fcb949d08971b4acc79fa3a18c05ce7fbe16e9e1
   useEffect(() => {
     if (isOpen) {
       console.log("Agent Preview Opened:", {
@@ -97,15 +90,11 @@ const PreviewModal: React.FC<PreviewModalProps> = ({
         timestamp: new Date().toISOString(),
       });
     } catch (error) {
-<<<<<<< HEAD
       toast({
         title: "Chat error",
         description: "Error in chat",
         variant: "destructive",
       });
-=======
-      console.error("Error in chat:", error);
->>>>>>> fcb949d08971b4acc79fa3a18c05ce7fbe16e9e1
       setMessages(prev => [...prev, { 
         role: "assistant", 
         content: "Sorry, I encountered an error. Please try again.", 
@@ -129,14 +118,10 @@ const PreviewModal: React.FC<PreviewModalProps> = ({
       timestamp: new Date().toISOString(),
     });
     setMessages([]);
-<<<<<<< HEAD
     toast({
       title: "Reboot successful",
       description: "Agent rebooted successfully!",
     });
-=======
-    alert("Agent rebooted successfully!");
->>>>>>> fcb949d08971b4acc79fa3a18c05ce7fbe16e9e1
   };
 
   const formatTime = (date: Date) => {

@@ -138,11 +138,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json(weatherData);
   } catch (error) {
-<<<<<<< HEAD
     console.error('Weather API error:', error); // Server log - keep for debugging
-=======
-    console.error('Weather API error:', error);
->>>>>>> fcb949d08971b4acc79fa3a18c05ce7fbe16e9e1
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Internal server error' },
       { status: 500 }

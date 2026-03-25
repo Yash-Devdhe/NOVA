@@ -6,17 +6,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-<<<<<<< HEAD
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Save, Globe, Link, AlertCircle, CheckCircle2, GitBranch } from "lucide-react";
 import { ToolApiKeyInput } from "./ToolApiKeyInput";
-=======
-import { Switch } from "@/components/ui/switch";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Save, Globe, Key, Link, AlertCircle, CheckCircle2, GitBranch } from "lucide-react";
->>>>>>> fcb949d08971b4acc79fa3a18c05ce7fbe16e9e1
 
 interface APIToolSettingsProps {
   nodeId: string;
@@ -30,7 +23,6 @@ const APIToolSettings: React.FC<APIToolSettingsProps> = ({ nodeId, agentId, init
   const [name, setName] = useState(initialConfig.name || "");
   const [method, setMethod] = useState(initialConfig.method || "GET");
   const [apiUrl, setApiUrl] = useState(initialConfig.apiUrl || "");
-<<<<<<< HEAD
   const [apiKeyConfig, setApiKeyConfig] = useState(
     initialConfig.apiKeyConfig || {
       useApiKey: false,
@@ -39,12 +31,6 @@ const APIToolSettings: React.FC<APIToolSettingsProps> = ({ nodeId, agentId, init
     }
   );
   const [bodyParams, setBodyParams] = useState(initialConfig.bodyParams || "");
-=======
-  const [includeApiKey, setIncludeApiKey] = useState(initialConfig.includeApiKey || false);
-  const [apiKey, setApiKey] = useState(initialConfig.apiKey || "");
-  const [bodyParams, setBodyParams] = useState(initialConfig.bodyParams || "");
-  const [showApiKey, setShowApiKey] = useState(false);
->>>>>>> fcb949d08971b4acc79fa3a18c05ce7fbe16e9e1
   const [saving, setSaving] = useState(false);
   const [urlError, setUrlError] = useState("");
   const [conditionType, setConditionType] = useState(initialConfig.conditionType || "none");
@@ -74,14 +60,11 @@ const APIToolSettings: React.FC<APIToolSettingsProps> = ({ nodeId, agentId, init
       alert("Please enter a valid API URL");
       return;
     }
-<<<<<<< HEAD
 
     if (apiKeyConfig.useApiKey && !apiKeyConfig.apiKey.trim()) {
       alert("API Key is required when enabled");
       return;
     }
-=======
->>>>>>> fcb949d08971b4acc79fa3a18c05ce7fbe16e9e1
     
     setSaving(true);
     try {
@@ -89,12 +72,7 @@ const APIToolSettings: React.FC<APIToolSettingsProps> = ({ nodeId, agentId, init
         name,
         method,
         apiUrl,
-<<<<<<< HEAD
         apiKeyConfig,
-=======
-        includeApiKey,
-        apiKey: includeApiKey ? apiKey : "",
->>>>>>> fcb949d08971b4acc79fa3a18c05ce7fbe16e9e1
         bodyParams: method === "POST" ? bodyParams : "",
         conditionType,
         condition: conditionType === "if" ? condition : "",
@@ -107,17 +85,10 @@ const APIToolSettings: React.FC<APIToolSettingsProps> = ({ nodeId, agentId, init
       
       console.log("API Tool Settings Saved:", { toolType: "api", nodeId, agentId, config });
       onSave(config);
-<<<<<<< HEAD
       alert("✓ API settings saved successfully!");
     } catch (error) {
       console.error("Error saving API settings:", error);
       alert("✗ Error saving settings. Please try again.");
-=======
-      alert("API settings saved successfully!");
-    } catch (error) {
-      console.error("Error saving API settings:", error);
-      alert("Error saving settings");
->>>>>>> fcb949d08971b4acc79fa3a18c05ce7fbe16e9e1
     } finally {
       setSaving(false);
     }
@@ -236,39 +207,11 @@ const APIToolSettings: React.FC<APIToolSettingsProps> = ({ nodeId, agentId, init
           </CardContent>
         </Card>
 
-<<<<<<< HEAD
         <ToolApiKeyInput
           value={apiKeyConfig}
           onChange={setApiKeyConfig}
           tooltip="Add optional API authentication headers to your request"
         />
-=======
-        <Card className="border-gray-200">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <Key className="h-4 w-4" />
-              Authentication
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-700">Include API Key</span>
-              <Switch checked={includeApiKey} onCheckedChange={setIncludeApiKey} />
-            </div>
-            {includeApiKey && (
-              <div>
-                <Label className="text-xs font-medium text-gray-700">API Key</Label>
-                <div className="relative mt-1">
-                  <Input type={showApiKey ? "text" : "password"} placeholder="sk-..." value={apiKey} onChange={(e) => setApiKey(e.target.value)} className="pr-10 font-mono text-sm" />
-                  <button type="button" onClick={() => setShowApiKey(!showApiKey)} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 text-sm">
-                    {showApiKey ? "Hide" : "Show"}
-                  </button>
-                </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
->>>>>>> fcb949d08971b4acc79fa3a18c05ce7fbe16e9e1
 
         {method === "POST" && (
           <Card className="border-gray-200">

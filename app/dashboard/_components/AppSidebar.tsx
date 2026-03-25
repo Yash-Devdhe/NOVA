@@ -8,10 +8,7 @@ import {
   Gem,
   Headphones,
   LayoutDashboard,
-<<<<<<< HEAD
   MessageCircle,
-=======
->>>>>>> fcb949d08971b4acc79fa3a18c05ce7fbe16e9e1
   User2,
   WalletCards,
   Menu
@@ -38,11 +35,7 @@ import { usePathname } from 'next/navigation'
 import { useConvex } from 'convex/react'
 import { api } from '@/convex/_generated/api'
 import { Id } from '@/convex/_generated/dataModel'
-<<<<<<< HEAD
 import type { Agent } from '../../../types/AgentType'
-=======
-import { Agent } from '../../../types/AgentType'
->>>>>>> fcb949d08971b4acc79fa3a18c05ce7fbe16e9e1
 
 type MenuOption = {
   name: string
@@ -52,19 +45,12 @@ type MenuOption = {
 
 const Menuoptions: MenuOption[] = [
   { name: 'Dashboard', url: '/dashboard', icon: LayoutDashboard },
-<<<<<<< HEAD
   { name: 'Chats', url: '/dashboard/chats', icon: MessageCircle },
-=======
->>>>>>> fcb949d08971b4acc79fa3a18c05ce7fbe16e9e1
   { name: 'AI Agents', url: '/dashboard/ai-agents', icon: Headphones },
   { name: 'Data', url: '/dashboard/data', icon: Database },
   { name: 'Pricing', url: '/dashboard/pricing', icon: WalletCards },
   { name: 'Profile', url: '/dashboard/profile', icon: User2 },
-<<<<<<< HEAD
 ] 
-=======
-]
->>>>>>> fcb949d08971b4acc79fa3a18c05ce7fbe16e9e1
 
 export function AppSidebar() {
   const { open, toggleSidebar } = useSidebar()

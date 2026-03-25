@@ -37,6 +37,12 @@
   ],
   "exclude": [
     "node_modules",
-    "convex"
+    "convex",
+    ".next",
+    "nova-no-code-virtual-agents",
+    "lib/API_KEY_QUICK_REFERENCE.ts",
+    "lib/currencyConverterExamples.ts",
+    "lib/apiKeyConfigExamples.ts",
+    "lib/apiKeyConfigTests.ts"
   ]
 }

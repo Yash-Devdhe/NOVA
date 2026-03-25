@@ -8,11 +8,7 @@ export default defineSchema({
     subscription: v.optional(v.string()),
     token: v.number(),
   }),
-<<<<<<< HEAD
     AgentTable: defineTable({
-=======
-  AgentTable: defineTable({
->>>>>>> fcb949d08971b4acc79fa3a18c05ce7fbe16e9e1
     agentId: v.string(),
     name: v.string(),
     config: v.optional(v.any()),
@@ -22,7 +18,6 @@ export default defineSchema({
     updatedAt: v.optional(v.number()),
     // API Keys storage - encrypted
     apiKeys: v.optional(v.record(v.string(), v.string())),
-<<<<<<< HEAD
     // Custom user-defined tools
     customTools: v.optional(v.array(v.object({
       id: v.string(),
@@ -33,8 +28,6 @@ export default defineSchema({
       paramsSchema: v.optional(v.any()),
       apiKey: v.optional(v.string())
     }))),
-=======
->>>>>>> fcb949d08971b4acc79fa3a18c05ce7fbe16e9e1
     // Media generation limits
     videoLimit: v.optional(v.number()),
     imageLimit: v.optional(v.number()),
